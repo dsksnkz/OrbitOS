@@ -46,7 +46,7 @@ PopupWindow {
     anchor.rect.x: root.anchorWindow ? (root.anchorWindow.width - width) / 2 : 0
     anchor.rect.y: root.anchorWindow ? root.anchorWindow.height + 6 : 46
     implicitWidth: 430
-    implicitHeight: 520
+    implicitHeight: 558
     visible: opened
     color: "transparent"
 
