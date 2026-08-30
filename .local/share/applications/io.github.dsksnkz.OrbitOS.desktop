@@ -1,7 +1,7 @@
 [Desktop Entry]
-Name=Magnetism Tools
-Comment=Open the Magnetism desktop control dashboard
-Exec=/home/matte/.local/bin/magnetism-tools
+Name=OrbitOS Tools
+Comment=Open the OrbitOS desktop control dashboard
+Exec=/home/matte/.local/bin/orbitos-tools
 Icon=preferences-system-symbolic
 Terminal=false
 Type=Application

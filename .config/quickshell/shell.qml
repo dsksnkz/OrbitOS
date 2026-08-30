@@ -1,4 +1,4 @@
-//@ pragma ShellId magnetism-shell
+//@ pragma ShellId orbitos-shell
 //@ pragma DropExpensiveFonts
 
 import QtQuick
@@ -15,6 +15,7 @@ ShellRoot {
     id: shell
     property bool controlOpen: false
     property bool timeOpen: false
+    property bool homeOpen: false
 
     Variants {
         id: bars
@@ -37,10 +38,14 @@ ShellRoot {
             property int notificationCount: 0
             property string powerProfile: "balanced"
             property bool caffeineEnabled: false
+            property int animationSpeed: 100
 
             function toggleControl(): void {
                 shell.controlOpen = !shell.controlOpen
-                if (shell.controlOpen) shell.timeOpen = false
+                if (shell.controlOpen) {
+                    shell.timeOpen = false
+                    shell.homeOpen = false
+                }
             }
 
             screen: modelData
@@ -88,7 +93,7 @@ ShellRoot {
                             bar.powerProfile = status.powerProfile ?? "balanced"
                             bar.caffeineEnabled = status.caffeine ?? false
                         } catch (error) {
-                            console.warn("Magnetism status parse failed:", error)
+                            console.warn("OrbitOS status parse failed:", error)
                         }
                     }
                 }
@@ -111,12 +116,14 @@ ShellRoot {
                     BarButton {
                         label: "󰣇"
                         compact: true
-                        hint: "Applications"
+                        hint: "Home"
+                        active: shell.homeOpen
                         onClicked: button => {
-                            if (button === Qt.RightButton)
-                                Quickshell.execDetached(["sh", "-lc", "~/.config/quickshell/scripts/utility-menu.sh"])
-                            else
-                                Quickshell.execDetached(["rofi", "-show", "drun"])
+                            shell.homeOpen = !shell.homeOpen
+                            if (shell.homeOpen) {
+                                shell.timeOpen = false
+                                shell.controlOpen = false
+                            }
                         }
                     }
 
@@ -195,11 +202,32 @@ ShellRoot {
                             width: 14
                             height: 14
                             anchors.verticalCenter: parent.verticalCenter
-                            Rectangle { anchors.centerIn: parent; width: 12; height: 12; radius: 6; color: "transparent"; border.width: 1; border.color: "#555555" }
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: 12
+                                height: 12
+                                radius: 6
+                                color: "transparent"
+                                border.width: 1
+                                border.color: "#555555"
+                            }
                             Item {
                                 anchors.fill: parent
-                                Rectangle { anchors.horizontalCenter: parent.horizontalCenter; anchors.top: parent.top; width: 3; height: 3; radius: 2; color: "#f5f5f5" }
-                                RotationAnimator on rotation { from: 0; to: 360; duration: 18000; loops: Animation.Infinite; running: true }
+                                Rectangle {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    anchors.top: parent.top
+                                    width: 3
+                                    height: 3
+                                    radius: 2
+                                    color: "#f5f5f5"
+                                }
+                                RotationAnimator on rotation {
+                                    from: 0
+                                    to: 360
+                                    duration: 18000
+                                    loops: Animation.Infinite
+                                    running: true
+                                }
                             }
                         }
                         Text {
@@ -223,13 +251,18 @@ ShellRoot {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: event => {
-                            if (event.button === Qt.MiddleButton)
+                            if (event.button === Qt.MiddleButton) {
+                                shell.timeOpen = false
                                 Quickshell.execDetached(["sh", "-lc", "~/.config/quickshell/scripts/timer.sh"])
-                            else if (event.button === Qt.RightButton)
+                            } else if (event.button === Qt.RightButton) {
+                                shell.timeOpen = false
                                 Quickshell.execDetached([Quickshell.shellPath("scripts/alarm.py"), "add"])
-                            else {
+                            } else {
                                 shell.timeOpen = !shell.timeOpen
-                                if (shell.timeOpen) shell.controlOpen = false
+                                if (shell.timeOpen) {
+                                    shell.controlOpen = false
+                                    shell.homeOpen = false
+                                }
                             }
                         }
                     }
@@ -372,7 +405,10 @@ ShellRoot {
                         active: shell.controlOpen
                         onClicked: {
                             shell.controlOpen = !shell.controlOpen
-                            if (shell.controlOpen) shell.timeOpen = false
+                            if (shell.controlOpen) {
+                                shell.timeOpen = false
+                                shell.homeOpen = false
+                            }
                         }
                     }
                 }
@@ -384,7 +420,7 @@ ShellRoot {
                 anchor.rect.x: bar.width - width
                 anchor.rect.y: bar.height + 6
                 implicitWidth: 382
-                implicitHeight: 510
+                implicitHeight: 578
                 visible: shell.controlOpen
                 color: "transparent"
 
@@ -410,7 +446,7 @@ ShellRoot {
                             height: 42
                             Text {
                                 width: parent.width - closeControl.width
-                                text: "MAGNETISM  /  CONTROL"
+                                text: "ORBITOS  /  CONTROL"
                                 color: "#f5f5f5"
                                 font.family: "JetBrainsMono Nerd Font"
                                 font.pixelSize: 14
@@ -523,7 +559,7 @@ ShellRoot {
                             }
                             UtilityTile {
                                 icon: "󰆍"
-                                title: "Magnetism Tools"
+                                title: "OrbitOS Tools"
                                 subtitle: "14 desktop utilities"
                                 command: "~/.config/quickshell/scripts/utility-menu.sh"
                                 onActivated: shell.controlOpen = false
@@ -553,10 +589,115 @@ ShellRoot {
                             }
                             BarButton {
                                 label: "󰐥 Power"
-                                onClicked: Quickshell.execDetached(["sh", "-lc", "~/.config/quickshell/scripts/power-menu.sh"])
+                                onClicked: {
+                                    shell.controlOpen = false
+                                    Quickshell.execDetached(["wlogout"])
+                                }
+                            }
+                        }
+
+                        Column {
+                            width: parent.width
+                            spacing: 6
+
+                            Row {
+                                width: parent.width
+                                Text {
+                                    width: parent.width - speedValue.width
+                                    text: "ANIMATION SPEED"
+                                    color: "#9a9a9a"
+                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.pixelSize: 9
+                                    font.weight: Font.DemiBold
+                                }
+                                Text {
+                                    id: speedValue
+                                    text: bar.animationSpeed + "%"
+                                    color: "#f5f5f5"
+                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.pixelSize: 10
+                                    font.weight: Font.Bold
+                                }
+                            }
+
+                            Rectangle {
+                                id: speedTrack
+                                width: parent.width
+                                height: 24
+                                radius: 3
+                                color: "#101010"
+                                border.width: 1
+                                border.color: speedMouse.containsMouse ? "#777777" : "#303030"
+
+                                Rectangle {
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 4
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: Math.max(8, (parent.width - 8) * (bar.animationSpeed - 50) / 130)
+                                    height: 4
+                                    radius: 2
+                                    color: "#f5f5f5"
+                                    Behavior on width { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
+                                }
+                                Rectangle {
+                                    x: 4 + (parent.width - 16) * (bar.animationSpeed - 50) / 130
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 8
+                                    height: 14
+                                    radius: 2
+                                    color: "#f5f5f5"
+                                    Behavior on x { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
+                                }
+                                MouseArea {
+                                    id: speedMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    function updateSpeed(mouseX): void {
+                                        bar.animationSpeed = Math.round(50 + Math.max(0, Math.min(1, mouseX / width)) * 130)
+                                        speedApply.restart()
+                                    }
+                                    onPressed: event => updateSpeed(event.x)
+                                    onPositionChanged: event => { if (pressed) updateSpeed(event.x) }
+                                    onWheel: event => {
+                                        bar.animationSpeed = Math.max(50, Math.min(180,
+                                            bar.animationSpeed + (event.angleDelta.y > 0 ? 5 : -5)))
+                                        speedApply.restart()
+                                    }
+                                }
+                            }
+
+                            Row {
+                                width: parent.width
+                                Text { width: parent.width / 2; text: "CALM"; color: "#555555"; font.family: "Inter"; font.pixelSize: 8 }
+                                Text { width: parent.width / 2; text: "SWIFT"; color: "#555555"; font.family: "Inter"; font.pixelSize: 8; horizontalAlignment: Text.AlignRight }
                             }
                         }
                     }
+                }
+
+                Timer {
+                    id: speedApply
+                    interval: 140
+                    onTriggered: Quickshell.execDetached([
+                        Quickshell.shellPath("scripts/animation-speed.py"), "set", bar.animationSpeed.toString()
+                    ])
+                }
+
+                Process {
+                    command: [Quickshell.shellPath("scripts/animation-speed.py"), "apply"]
+                    running: true
+                    stdout: SplitParser { onRead: data => bar.animationSpeed = parseInt(data.trim()) || 100 }
+                }
+            }
+
+            HomeScreen {
+                anchorWindow: bar
+                opened: shell.homeOpen
+                onCloseRequested: shell.homeOpen = false
+                onControlRequested: {
+                    shell.homeOpen = false
+                    shell.controlOpen = true
                 }
             }
 
@@ -569,11 +710,14 @@ ShellRoot {
     }
 
     IpcHandler {
-        target: "magnetism"
+        target: "orbitos"
 
         function toggleControl(): void {
             shell.controlOpen = !shell.controlOpen
-            if (shell.controlOpen) shell.timeOpen = false
+            if (shell.controlOpen) {
+                shell.timeOpen = false
+                shell.homeOpen = false
+            }
         }
 
         function controlVisible(): bool {
@@ -582,7 +726,10 @@ ShellRoot {
 
         function toggleTime(): void {
             shell.timeOpen = !shell.timeOpen
-            if (shell.timeOpen) shell.controlOpen = false
+            if (shell.timeOpen) {
+                shell.controlOpen = false
+                shell.homeOpen = false
+            }
         }
 
         function timeVisible(): bool {
@@ -591,6 +738,14 @@ ShellRoot {
 
         function openTools(): void {
             Quickshell.execDetached(["sh", "-lc", "~/.config/quickshell/scripts/utility-menu.sh"])
+        }
+
+        function toggleHome(): void {
+            shell.homeOpen = !shell.homeOpen
+            if (shell.homeOpen) {
+                shell.controlOpen = false
+                shell.timeOpen = false
+            }
         }
     }
 }

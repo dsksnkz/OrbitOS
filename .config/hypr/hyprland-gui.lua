@@ -40,11 +40,7 @@ hl.animation({
 -- Monitors
 hl.monitor({
     output = "eDP-1",
-    mode = "1920x1080@120.21Hz",
-    position = "0x0",
-    scale = 1,
-    vrr = 0,
-    cm = "srgb",
+    disabled = true,
 })
 
 -- Keybinds

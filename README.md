@@ -1,21 +1,20 @@
-# Magnetism Dotfiles
+# OrbitOS
 
-A compact monochrome Hyprland setup for Arch Linux with smooth animations,
-3 px corners, a custom Quickshell bar, and a styled Rofi launcher.
+A UX-first monochrome Hyprland desktop for Arch Linux. UI follows function:
+fast access, clear feedback, small corners, and motion you can tune.
 
-![Magnetism desktop preview](assets/magnetism-desktop.png)
+![OrbitOS desktop preview](assets/orbitos-desktop.png)
 
-Includes Hyprland, Quickshell, Rofi, SwayNC, Kitty, GTK, Qt, btop, CAVA, and
-Fastfetch configurations. Quickshell replaces Waybar.
+Includes a Quickshell bar and home screen, control and time hubs, alarms,
+styled Rofi and wlogout, plus matching app themes.
 
-Click the bar clock for the animated calendar and alarm hub. Middle-click starts
-a timer, right-click creates an alarm, and `Super+Shift+A` toggles the hub.
+Click the Arch icon to go home. Click the clock for calendar, alarms, and timers.
 
 ## Install
 
 ```bash
-git clone https://github.com/dsksnkz/Magnetism-Dotfiles.git
-cd Magnetism-Dotfiles
+git clone https://github.com/dsksnkz/OrbitOS.git
+cd OrbitOS
 chmod +x install.sh
 ./install.sh
 ```

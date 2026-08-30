@@ -116,8 +116,8 @@ ForegroundPositive=220,220,220
 ForegroundVisited=168,168,168
 
 [General]
-ColorScheme=Magnetism
-Name=Magnetism
+ColorScheme=OrbitOS
+Name=OrbitOS
 
 [Icons]
 Theme=breeze-dark

@@ -21,15 +21,13 @@ local var_browser = "flatpak run app.zen_browser.zen"
 -- See https://wiki.hypr.land/Configuring/Monitors/
 hl.monitor({
     output = "eDP-1",
-    mode = "1920x1080@120",
-    position = "auto",
-    scale = 1,
+    disabled = true,
 })
 
 hl.monitor({
     output = "HDMI-A-1",
-    mode = "1920x1080@120",
-    position = "auto",
+    mode = "1920x1080@200",
+    position = "0x0",
     scale = 1,
 })
 
@@ -75,7 +73,7 @@ hl.on("hyprland.start", function()
     hl.exec_cmd("quickshell --daemonize")
     hl.exec_cmd("swayosd-server")
     hl.exec_cmd("clipse -listen")
-    hl.exec_cmd("systemd-run --user --unit=magnetism-hypridle --collect hypridle")
+    hl.exec_cmd("systemd-run --user --unit=orbitos-hypridle --collect hypridle")
     hl.exec_cmd("hyprpm reload")
 end)
 
@@ -243,7 +241,7 @@ hl.curve("easeOutCirc", { type = "bezier", points = { { 0, 0.55 }, { 0.45, 1 } }
 hl.curve("easeOutExpo", { type = "bezier", points = { { 0.16, 1 }, { 0.3, 1 } } })
 hl.curve("softAcDecel", { type = "bezier", points = { { 0.26, 0.26 }, { 0.15, 1 } } })
 hl.curve("md2", { type = "bezier", points = { { 0.4, 0 }, { 0.2, 1 } } })
-hl.curve("magnetism_spring", { type = "spring", mass = 1, stiffness = 170, dampening = 21 })
+hl.curve("orbit_spring", { type = "spring", mass = 1, stiffness = 170, dampening = 21 })
 
 -- Animation configs
 hl.animation({
@@ -271,7 +269,7 @@ hl.animation({
     leaf = "windowsMove",
     enabled = true,
     speed = 4.0,
-    spring = "magnetism_spring",
+    spring = "orbit_spring",
 })
 hl.animation({
     leaf = "border",
@@ -324,7 +322,7 @@ hl.animation({
     leaf = "workspaces",
     enabled = true,
     speed = 5.5,
-    spring = "magnetism_spring",
+    spring = "orbit_spring",
     style = "slidefade 18%",
 })
 
@@ -350,12 +348,12 @@ hl.animation({ leaf = "fadeDpms", enabled = true, speed = 7.0, bezier = "linear"
 hl.animation({ leaf = "borderangle", enabled = true, speed = 12.0, bezier = "linear", style = "once" })
 hl.animation({ leaf = "shadowangle", enabled = true, speed = 14.0, bezier = "linear", style = "once" })
 hl.animation({ leaf = "glowangle", enabled = true, speed = 14.0, bezier = "linear", style = "once" })
-hl.animation({ leaf = "workspacesIn", enabled = true, speed = 5.5, spring = "magnetism_spring", style = "slidefade 18%" })
+hl.animation({ leaf = "workspacesIn", enabled = true, speed = 5.5, spring = "orbit_spring", style = "slidefade 18%" })
 hl.animation({ leaf = "workspacesOut", enabled = true, speed = 4.5, bezier = "md3_accel", style = "slidefade 18%" })
 hl.animation({ leaf = "specialWorkspaceIn", enabled = true, speed = 5.0, bezier = "overshot", style = "slidefadevert 22%" })
 hl.animation({ leaf = "specialWorkspaceOut", enabled = true, speed = 4.0, bezier = "md3_accel", style = "slidefadevert 22%" })
-hl.animation({ leaf = "zoomFactor", enabled = true, speed = 4.0, spring = "magnetism_spring" })
-hl.animation({ leaf = "monitorAdded", enabled = true, speed = 8.0, spring = "magnetism_spring" })
+hl.animation({ leaf = "zoomFactor", enabled = true, speed = 4.0, spring = "orbit_spring" })
+hl.animation({ leaf = "monitorAdded", enabled = true, speed = 8.0, spring = "orbit_spring" })
 
 hl.config({
     input = {
@@ -494,7 +492,7 @@ hl.bind(var_mainMod .. " + SHIFT + B", hl.dsp.exec_cmd("~/.config/quickshell/scr
 hl.bind(var_mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("~/.config/quickshell/scripts/wifi-toggle.sh"))
 hl.bind(var_mainMod .. " + SHIFT + P", hl.dsp.exec_cmd("~/.config/quickshell/scripts/power-menu.sh"))
 hl.bind(var_mainMod .. " + SHIFT + T", hl.dsp.exec_cmd("~/.config/quickshell/scripts/timer.sh"))
-hl.bind(var_mainMod .. " + SHIFT + A", hl.dsp.exec_cmd("quickshell ipc call magnetism toggleTime"))
+hl.bind(var_mainMod .. " + SHIFT + A", hl.dsp.exec_cmd("quickshell ipc call orbitos toggleTime"))
 hl.bind(var_mainMod .. " + SHIFT + X", hl.dsp.exec_cmd("hyprpicker --autocopy --notify --format=hex"))
 hl.bind(var_mainMod .. " + SHIFT + U", hl.dsp.exec_cmd("~/.config/quickshell/scripts/utility-menu.sh"))
 hl.bind(var_mainMod .. " + SHIFT + D", hl.dsp.exec_cmd("~/.config/quickshell/scripts/dnd-toggle.sh"))

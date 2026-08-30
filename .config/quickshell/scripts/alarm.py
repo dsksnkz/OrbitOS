@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Small local alarm manager for the Magnetism time hub."""
+"""Small local alarm manager for the OrbitOS time hub."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
-STATE_DIR = Path.home() / ".local/state/magnetism"
+STATE_DIR = Path.home() / ".local/state/orbitos"
 STATE_FILE = STATE_DIR / "alarms.json"
 ALARM_RING = Path(__file__).with_name("alarm-ring.sh")
 
@@ -38,7 +38,7 @@ def save_alarms(alarms: list[dict[str, object]]) -> None:
 
 
 def notify(message: str) -> None:
-    run(["notify-send", "Magnetism Alarm", message])
+    run(["notify-send", "OrbitOS Alarm", message])
 
 
 def rofi(prompt: str, choices: str = "") -> str:
@@ -80,7 +80,7 @@ def add_alarm() -> int:
         return 1
     target, label = parsed
     alarm_id = f"{int(target.timestamp())}-{int(time.time() * 1000) % 100000}"
-    unit = f"magnetism-alarm-{alarm_id}"
+    unit = f"orbitos-alarm-{alarm_id}"
     command = [
         "systemd-run",
         "--user",
@@ -139,7 +139,7 @@ def manage_alarms() -> int:
         selected = [alarms[index]]
         remaining = [alarm for offset, alarm in enumerate(alarms) if offset != index]
     for alarm in selected:
-        unit = f"magnetism-alarm-{alarm['id']}.timer"
+        unit = f"orbitos-alarm-{alarm['id']}.timer"
         run(["systemctl", "--user", "stop", unit], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     save_alarms(remaining)
     notify("Alarm cancelled" if len(selected) == 1 else "All alarms cancelled")

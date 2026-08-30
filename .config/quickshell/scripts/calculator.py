@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""A small, safe calculator for the Magnetism utility menu."""
+"""A small, safe calculator for the OrbitOS utility menu."""
 
 from __future__ import annotations
 

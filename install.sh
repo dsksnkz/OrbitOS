@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 REPO_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-BACKUP_ROOT="${XDG_STATE_HOME:-$HOME/.local/state}/magnetism/backups"
+BACKUP_ROOT="${XDG_STATE_HOME:-$HOME/.local/state}/orbitos/backups"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 BACKUP_DIR="$BACKUP_ROOT/$TIMESTAMP"
 
@@ -12,7 +12,11 @@ else
     BOLD=""; DIM=""; WHITE=""; RESET=""
 fi
 
-cleanup() { [[ -t 1 ]] && printf '\e[?25h'; }
+cleanup() {
+    if [[ -t 1 ]]; then
+        printf '\e[?25h'
+    fi
+}
 trap cleanup EXIT INT TERM
 
 say() { printf '%s\n' "$*"; }
@@ -29,7 +33,7 @@ ask() {
 }
 
 animate_title() {
-    local text="MAGNETISM" shown="" i
+    local text="ORBITOS" shown="" i
     printf '\n  '
     for ((i = 0; i < ${#text}; i++)); do
         shown+="${text:i:1}"
@@ -77,8 +81,9 @@ MANAGED_PATHS=(
     ".config/quickshell"
     ".config/rofi"
     ".config/swaync"
-    ".local/bin/magnetism-tools"
-    ".local/share/applications/io.github.dsksnkz.MagnetismTools.desktop"
+    ".config/wlogout"
+    ".local/bin/orbitos-tools"
+    ".local/share/applications/io.github.dsksnkz.OrbitOS.desktop"
 )
 
 backup_existing() {
@@ -132,7 +137,7 @@ rewrite_home_paths() {
         "$HOME/.config/hypr/hyprlock.conf"
         "$HOME/.config/hypr/hyprpaper.conf"
         "$HOME/.config/qt6ct/qt6ct.conf"
-        "$HOME/.local/share/applications/io.github.dsksnkz.MagnetismTools.desktop"
+        "$HOME/.local/share/applications/io.github.dsksnkz.OrbitOS.desktop"
     )
     for file in "${files[@]}"; do
         [[ -f "$file" ]] && sed -i "s|/home/matte|$escaped_home|g" "$file"
@@ -142,12 +147,12 @@ rewrite_home_paths() {
 animate_title
 
 if [[ ! -d "$REPO_DIR/.config/hypr" ]]; then
-    say "  Error: run this script from the Magnetism repository."
+    say "  Error: run this script from the OrbitOS repository."
     exit 1
 fi
 
 if [[ -r /etc/os-release ]] && ! grep -q '^ID=arch$' /etc/os-release; then
-    say "  ${DIM}Warning: Magnetism is designed for Arch Linux.${RESET}"
+    say "  ${DIM}Warning: OrbitOS is designed for Arch Linux.${RESET}"
 fi
 
 if ask "  Back up existing managed dotfiles?" yes; then
@@ -176,7 +181,7 @@ if [[ "$CREATE_BACKUP" == true ]]; then
     fi
 fi
 
-spin "Installing Magnetism dotfiles" install_dotfiles
+spin "Installing OrbitOS dotfiles" install_dotfiles
 spin "Adapting paths for $USER" rewrite_home_paths
 
 if command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
@@ -184,6 +189,6 @@ if command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}
 fi
 
 say
-say "  ${BOLD}Magnetism installed.${RESET}"
+say "  ${BOLD}OrbitOS installed.${RESET}"
 say "  Log out and back in to start every desktop component."
 say

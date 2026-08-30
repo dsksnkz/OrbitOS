@@ -10,6 +10,7 @@ PopupWindow {
     property int monthOffset: 0
     property string nextAlarm: "No alarms scheduled"
     property real reveal: 0
+    property var pendingCommand: []
     signal closeRequested()
 
     function shownMonth(): var {
@@ -30,7 +31,9 @@ PopupWindow {
     }
 
     function runAction(command): void {
-        Quickshell.execDetached(command)
+        pendingCommand = command
+        closeRequested()
+        actionDelay.restart()
     }
 
     onOpenedChanged: {
@@ -61,6 +64,12 @@ PopupWindow {
         stdout: SplitParser {
             onRead: data => root.nextAlarm = data.trim() || "No alarms scheduled"
         }
+    }
+
+    Timer {
+        id: actionDelay
+        interval: 100
+        onTriggered: Quickshell.execDetached(root.pendingCommand)
     }
 
     Timer {
@@ -109,7 +118,7 @@ PopupWindow {
                 Text {
                     width: parent.width - closeButton.width
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "MAGNETISM  /  TIME"
+                    text: "ORBITOS  /  TIME"
                     color: "#f5f5f5"
                     font.family: "JetBrainsMono Nerd Font"
                     font.pixelSize: 13
@@ -302,9 +311,9 @@ PopupWindow {
                 BarButton { width: 124; label: "󰃰 Alarm"; onClicked: root.runAction([Quickshell.shellPath("scripts/alarm.py"), "add"]) }
                 BarButton { width: 124; label: "󰔛 Timer"; onClicked: root.runAction(["sh", "-lc", "~/.config/quickshell/scripts/timer.sh"]) }
                 BarButton { width: 124; label: "󰀠 Alarms"; onClicked: root.runAction([Quickshell.shellPath("scripts/alarm.py"), "manage"]) }
-                BarButton { width: 124; label: "󰅍 Copy time"; onClicked: root.runAction([Quickshell.shellPath("scripts/alarm.py"), "copy-time"]) }
-                BarButton { width: 124; label: "󰅍 Copy date"; onClicked: root.runAction([Quickshell.shellPath("scripts/alarm.py"), "copy-date"]) }
-                BarButton { width: 124; label: "󰂛 Focus"; onClicked: root.runAction(["sh", "-lc", "~/.config/quickshell/scripts/dnd-toggle.sh"]) }
+                BarButton { width: 124; label: "󰅍 Copy time"; onClicked: Quickshell.execDetached([Quickshell.shellPath("scripts/alarm.py"), "copy-time"]) }
+                BarButton { width: 124; label: "󰅍 Copy date"; onClicked: Quickshell.execDetached([Quickshell.shellPath("scripts/alarm.py"), "copy-date"]) }
+                BarButton { width: 124; label: "󰂛 Focus"; onClicked: Quickshell.execDetached(["sh", "-lc", "~/.config/quickshell/scripts/dnd-toggle.sh"]) }
             }
         }
     }

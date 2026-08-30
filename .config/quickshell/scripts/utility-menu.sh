@@ -5,7 +5,7 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 choice="$(printf '%s\n' \
     'Applications' 'Clipboard' 'Screenshot region' 'Color picker' 'Mission Center' \
     'Audio controls' 'Network controls' 'Files' 'Calculator' 'Timer' 'Web search' \
-    'Notifications' 'Lock screen' 'Power menu' | rofi -dmenu -p 'Magnetism Tools')"
+    'Notifications' 'Lock screen' 'Power menu' | rofi -dmenu -p 'OrbitOS Tools')"
 
 case "${choice}" in
     Applications) rofi -show drun ;;

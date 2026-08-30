@@ -2,7 +2,7 @@
 set -euo pipefail
 
 target_dir="${HOME}/Pictures/Screenshots"
-target="${target_dir}/Magnetism-$(date +%Y-%m-%d-%H%M%S).png"
+target="${target_dir}/OrbitOS-$(date +%Y-%m-%d-%H%M%S).png"
 mkdir -p "${target_dir}"
 geometry="$(slurp)" || exit 0
 grim -g "${geometry}" "${target}"

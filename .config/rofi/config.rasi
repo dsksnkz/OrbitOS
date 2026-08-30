@@ -36,7 +36,7 @@ window {
     background-color: @black;
 }
 
-mainbox { children: [ inputbar, body, footer ]; }
+mainbox { children: [ inputbar, body ]; }
 
 inputbar {
     padding: 14px 16px;
@@ -113,22 +113,6 @@ element-text { vertical-align: 0.5; background-color: transparent; }
 element-text selected.normal,
 element-text selected.active,
 element-text selected.urgent { text-color: @selected-fg; }
-
-footer {
-    orientation: horizontal;
-    padding: 9px 14px;
-    border: 1px 0 0 0;
-    border-color: @border;
-    background-color: @surface;
-    children: [ textbox-shortcuts ];
-}
-
-textbox-shortcuts {
-    expand: false;
-    horizontal-align: 1.0;
-    str: "↑↓ navigate   ↵ open   esc close";
-    text-color: @muted;
-}
 
 message { padding: 10px; background-color: @black; }
 textbox,

@@ -8,4 +8,4 @@ case "${current}" in
     *) next="power-saver" ;;
 esac
 powerprofilesctl set "${next}"
-notify-send "Magnetism" "Power profile: ${next}"
+notify-send "OrbitOS" "Power profile: ${next}"

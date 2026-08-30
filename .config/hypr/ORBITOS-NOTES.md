@@ -1,6 +1,6 @@
-# Magnetism preset
+# OrbitOS preset
 
-Magnetism is a monochrome, animation-rich desktop preset. Hardware-specific
+OrbitOS is a monochrome, animation-rich desktop preset. Hardware-specific
 monitor rules, keybindings, autostart commands, input behavior, HyprMod
 integration, and power settings remain based on the saved live configuration.
 
@@ -29,6 +29,6 @@ Additional shortcuts:
 - `Super+Shift+T`: timer
 - `Super+Shift+A`: animated calendar, clock, and alarms
 - `Super+Shift+X`: color picker
-- `Super+Shift+U`: Magnetism Tools hub
+- `Super+Shift+U`: OrbitOS Tools hub
 - `Super+Shift+D`: Do Not Disturb
 - `Super+Shift+I`: caffeine / automatic lock toggle
