@@ -13,6 +13,7 @@ Rectangle {
     implicitWidth: Math.max(compact ? 28 : 34, textItem.implicitWidth + (compact ? 10 : 16))
     implicitHeight: 28
     radius: 3
+    scale: mouse.pressed ? 0.92 : (mouse.containsMouse ? 1.025 : 1.0)
     color: active ? "#f5f5f5" : (mouse.containsMouse ? "#242424" : "#101010")
     border.width: active ? 0 : 1
     border.color: mouse.containsMouse ? "#f5f5f5" : "#3a3a3a"
@@ -40,4 +41,5 @@ Rectangle {
     Behavior on color { ColorAnimation { duration: 150; easing.type: Easing.OutCubic } }
     Behavior on border.color { ColorAnimation { duration: 150; easing.type: Easing.OutCubic } }
     Behavior on implicitWidth { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
+    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
 }

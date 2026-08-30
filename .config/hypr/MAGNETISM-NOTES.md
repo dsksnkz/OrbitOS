@@ -27,6 +27,7 @@ Additional shortcuts:
 - `Super+Shift+W`: toggle Wi-Fi
 - `Super+Shift+P`: confirmed power menu
 - `Super+Shift+T`: timer
+- `Super+Shift+A`: animated calendar, clock, and alarms
 - `Super+Shift+X`: color picker
 - `Super+Shift+U`: Magnetism Tools hub
 - `Super+Shift+D`: Do Not Disturb

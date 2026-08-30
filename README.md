@@ -8,6 +8,9 @@ A compact monochrome Hyprland setup for Arch Linux with smooth animations,
 Includes Hyprland, Quickshell, Rofi, SwayNC, Kitty, GTK, Qt, btop, CAVA, and
 Fastfetch configurations. Quickshell replaces Waybar.
 
+Click the bar clock for the animated calendar and alarm hub. Middle-click starts
+a timer, right-click creates an alarm, and `Super+Shift+A` toggles the hub.
+
 ## Install
 
 ```bash

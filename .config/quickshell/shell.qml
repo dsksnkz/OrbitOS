@@ -14,6 +14,7 @@ import Quickshell.Widgets
 ShellRoot {
     id: shell
     property bool controlOpen: false
+    property bool timeOpen: false
 
     Variants {
         id: bars
@@ -39,6 +40,7 @@ ShellRoot {
 
             function toggleControl(): void {
                 shell.controlOpen = !shell.controlOpen
+                if (shell.controlOpen) shell.timeOpen = false
             }
 
             screen: modelData
@@ -63,7 +65,7 @@ ShellRoot {
 
             SystemClock {
                 id: clock
-                precision: SystemClock.Minutes
+                precision: SystemClock.Seconds
             }
 
             Process {
@@ -179,7 +181,7 @@ ShellRoot {
                     id: centerClock
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 146
+                    width: clockMouse.containsMouse ? 174 : 164
                     height: 28
                     radius: 3
                     color: clockMouse.containsMouse ? "#202020" : "#0d0d0d"
@@ -189,6 +191,17 @@ ShellRoot {
                     Row {
                         anchors.centerIn: parent
                         spacing: 8
+                        Item {
+                            width: 14
+                            height: 14
+                            anchors.verticalCenter: parent.verticalCenter
+                            Rectangle { anchors.centerIn: parent; width: 12; height: 12; radius: 6; color: "transparent"; border.width: 1; border.color: "#555555" }
+                            Item {
+                                anchors.fill: parent
+                                Rectangle { anchors.horizontalCenter: parent.horizontalCenter; anchors.top: parent.top; width: 3; height: 3; radius: 2; color: "#f5f5f5" }
+                                RotationAnimator on rotation { from: 0; to: 360; duration: 18000; loops: Animation.Infinite; running: true }
+                            }
+                        }
                         Text {
                             text: Qt.formatDateTime(clock.date, "HH:mm")
                             color: "#f5f5f5"
@@ -206,12 +219,23 @@ ShellRoot {
                     MouseArea {
                         id: clockMouse
                         anchors.fill: parent
+                        acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: shell.controlOpen = !shell.controlOpen
+                        onClicked: event => {
+                            if (event.button === Qt.MiddleButton)
+                                Quickshell.execDetached(["sh", "-lc", "~/.config/quickshell/scripts/timer.sh"])
+                            else if (event.button === Qt.RightButton)
+                                Quickshell.execDetached([Quickshell.shellPath("scripts/alarm.py"), "add"])
+                            else {
+                                shell.timeOpen = !shell.timeOpen
+                                if (shell.timeOpen) shell.controlOpen = false
+                            }
+                        }
                     }
                     Behavior on color { ColorAnimation { duration: 160 } }
                     Behavior on border.color { ColorAnimation { duration: 160 } }
+                    Behavior on width { NumberAnimation { duration: 220; easing.type: Easing.OutBack } }
                 }
 
                 Row {
@@ -346,7 +370,10 @@ ShellRoot {
                         label: "󰒓"
                         compact: true
                         active: shell.controlOpen
-                        onClicked: shell.controlOpen = !shell.controlOpen
+                        onClicked: {
+                            shell.controlOpen = !shell.controlOpen
+                            if (shell.controlOpen) shell.timeOpen = false
+                        }
                     }
                 }
             }
@@ -532,6 +559,12 @@ ShellRoot {
                     }
                 }
             }
+
+            TimeHub {
+                anchorWindow: bar
+                opened: shell.timeOpen
+                onCloseRequested: shell.timeOpen = false
+            }
         }
     }
 
@@ -540,10 +573,20 @@ ShellRoot {
 
         function toggleControl(): void {
             shell.controlOpen = !shell.controlOpen
+            if (shell.controlOpen) shell.timeOpen = false
         }
 
         function controlVisible(): bool {
             return shell.controlOpen
+        }
+
+        function toggleTime(): void {
+            shell.timeOpen = !shell.timeOpen
+            if (shell.timeOpen) shell.controlOpen = false
+        }
+
+        function timeVisible(): bool {
+            return shell.timeOpen
         }
 
         function openTools(): void {

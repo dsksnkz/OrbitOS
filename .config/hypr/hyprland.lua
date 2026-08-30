@@ -494,6 +494,7 @@ hl.bind(var_mainMod .. " + SHIFT + B", hl.dsp.exec_cmd("~/.config/quickshell/scr
 hl.bind(var_mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("~/.config/quickshell/scripts/wifi-toggle.sh"))
 hl.bind(var_mainMod .. " + SHIFT + P", hl.dsp.exec_cmd("~/.config/quickshell/scripts/power-menu.sh"))
 hl.bind(var_mainMod .. " + SHIFT + T", hl.dsp.exec_cmd("~/.config/quickshell/scripts/timer.sh"))
+hl.bind(var_mainMod .. " + SHIFT + A", hl.dsp.exec_cmd("quickshell ipc call magnetism toggleTime"))
 hl.bind(var_mainMod .. " + SHIFT + X", hl.dsp.exec_cmd("hyprpicker --autocopy --notify --format=hex"))
 hl.bind(var_mainMod .. " + SHIFT + U", hl.dsp.exec_cmd("~/.config/quickshell/scripts/utility-menu.sh"))
 hl.bind(var_mainMod .. " + SHIFT + D", hl.dsp.exec_cmd("~/.config/quickshell/scripts/dnd-toggle.sh"))
