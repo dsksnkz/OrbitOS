@@ -5,6 +5,12 @@ fast access, clear feedback, small corners, and motion you can tune.
 
 ![OrbitOS desktop preview](assets/orbitos-desktop.png)
 
+## Screenshots
+
+![OrbitOS desktop](assets/OrbitOS-2026-08-30-181242.png)
+![OrbitOS control center](assets/OrbitOS-2026-08-30-181427.png)
+![OrbitOS home and launcher](assets/OrbitOS-2026-08-30-181746.png)
+
 Includes a Quickshell bar and home screen, control and time hubs, alarms,
 an installed-app manager, styled Rofi and wlogout, plus matching app themes.
 
