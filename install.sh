@@ -83,7 +83,9 @@ MANAGED_PATHS=(
     ".config/swaync"
     ".config/wlogout"
     ".local/bin/orbitos-tools"
+    ".local/bin/orbitos-apps"
     ".local/share/applications/io.github.dsksnkz.OrbitOS.desktop"
+    ".local/share/applications/io.github.dsksnkz.OrbitApps.desktop"
 )
 
 backup_existing() {
@@ -138,6 +140,7 @@ rewrite_home_paths() {
         "$HOME/.config/hypr/hyprpaper.conf"
         "$HOME/.config/qt6ct/qt6ct.conf"
         "$HOME/.local/share/applications/io.github.dsksnkz.OrbitOS.desktop"
+        "$HOME/.local/share/applications/io.github.dsksnkz.OrbitApps.desktop"
     )
     for file in "${files[@]}"; do
         [[ -f "$file" ]] && sed -i "s|/home/matte|$escaped_home|g" "$file"

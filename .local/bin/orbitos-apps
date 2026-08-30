@@ -1,0 +1,281 @@
+#!/usr/bin/env python3
+"""Orbit Apps: a small installed-application viewer for Arch Linux."""
+
+from __future__ import annotations
+
+import re
+import shlex
+import shutil
+import subprocess
+import threading
+from dataclasses import dataclass
+
+import gi
+
+gi.require_version("Gtk", "4.0")
+gi.require_version("Adw", "1")
+from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
+
+
+APP_ID = "io.github.dsksnkz.OrbitApps"
+PACKAGE_RE = re.compile(r"^[A-Za-z0-9@._+:-]+$")
+
+
+@dataclass(frozen=True)
+class InstalledApp:
+    name: str
+    app_id: str
+    icon: Gio.Icon | None
+    source: str
+    package: str | None
+
+
+def command_output(command: list[str]) -> str:
+    try:
+        return subprocess.run(
+            command,
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            timeout=8,
+        ).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+
+
+def owner_of(executable: str | None) -> str | None:
+    if not executable:
+        return None
+    path = executable if executable.startswith("/") else shutil.which(executable)
+    if not path:
+        return None
+    output = command_output(["pacman", "-Qqo", path]).strip().splitlines()
+    package = output[0] if output else ""
+    return package if PACKAGE_RE.fullmatch(package) else None
+
+
+def discover_apps() -> list[InstalledApp]:
+    flatpaks: dict[str, str] = {}
+    if shutil.which("flatpak"):
+        for line in command_output(
+            ["flatpak", "list", "--app", "--columns=application,name"]
+        ).splitlines():
+            parts = line.split("\t", 1)
+            if parts and parts[0]:
+                flatpaks[parts[0]] = parts[1] if len(parts) > 1 else parts[0]
+
+    found: list[InstalledApp] = []
+    seen: set[str] = set()
+    for info in Gio.AppInfo.get_all():
+        if not info.should_show():
+            continue
+        app_id = info.get_id() or ""
+        if not app_id or app_id in seen:
+            continue
+        seen.add(app_id)
+
+        flatpak_id = app_id.removesuffix(".desktop")
+        if flatpak_id in flatpaks:
+            source, package = "Flatpak", flatpak_id
+        else:
+            get_filename = getattr(info, "get_filename", None)
+            desktop_file = get_filename() if callable(get_filename) else None
+            package = owner_of(desktop_file)
+            source = "Arch" if package else "Local"
+
+        found.append(
+            InstalledApp(
+                name=info.get_display_name() or info.get_name() or app_id,
+                app_id=app_id,
+                icon=info.get_icon(),
+                source=source,
+                package=package,
+            )
+        )
+
+    return sorted(found, key=lambda item: item.name.casefold())
+
+
+class AppRow(Adw.ActionRow):
+    def __init__(self, app: InstalledApp, uninstall_callback) -> None:
+        super().__init__(title=app.name, subtitle=self._subtitle(app))
+        self.app = app
+        self.search_text = f"{app.name} {app.app_id} {app.package or ''}".casefold()
+
+        image = Gtk.Image.new_from_gicon(app.icon) if app.icon else Gtk.Image.new_from_icon_name("application-x-executable-symbolic")
+        image.set_pixel_size(30)
+        self.add_prefix(image)
+
+        button = Gtk.Button(label="Uninstall")
+        button.add_css_class("destructive-action")
+        button.set_valign(Gtk.Align.CENTER)
+        button.set_sensitive(app.package is not None)
+        button.set_tooltip_text(
+            "Remove this application" if app.package else "This app is not managed by pacman or Flatpak"
+        )
+        button.connect("clicked", lambda _button: uninstall_callback(app))
+        self.add_suffix(button)
+
+    @staticmethod
+    def _subtitle(app: InstalledApp) -> str:
+        if app.package:
+            return f"{app.source}  ·  {app.package}"
+        return "Local desktop entry  ·  uninstall unavailable"
+
+
+class OrbitAppsWindow(Adw.ApplicationWindow):
+    def __init__(self, app: Adw.Application) -> None:
+        super().__init__(application=app, title="Orbit Apps")
+        self.set_default_size(760, 680)
+        self.rows: list[AppRow] = []
+
+        header = Adw.HeaderBar()
+        title = Adw.WindowTitle(title="Orbit Apps", subtitle="Installed applications")
+        header.set_title_widget(title)
+        refresh = Gtk.Button.new_from_icon_name("view-refresh-symbolic")
+        refresh.set_tooltip_text("Refresh applications")
+        refresh.connect("clicked", lambda _button: self.load_apps())
+        header.pack_end(refresh)
+
+        self.search = Gtk.SearchEntry(placeholder_text="Search apps")
+        self.search.set_hexpand(True)
+        self.search.connect("search-changed", self.filter_rows)
+
+        search_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        search_box.set_margin_top(12)
+        search_box.set_margin_bottom(10)
+        search_box.set_margin_start(16)
+        search_box.set_margin_end(16)
+        search_box.append(self.search)
+
+        self.listbox = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
+        self.listbox.add_css_class("boxed-list")
+
+        self.status = Adw.StatusPage(
+            title="Finding applications…",
+            description="Checking pacman and Flatpak",
+            icon_name="system-search-symbolic",
+        )
+
+        self.stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE)
+        self.stack.add_named(self.status, "status")
+        self.stack.add_named(self.listbox, "apps")
+
+        scroll = Gtk.ScrolledWindow(vexpand=True)
+        scroll.set_child(self.stack)
+        scroll.set_margin_start(16)
+        scroll.set_margin_end(16)
+        scroll.set_margin_bottom(16)
+
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        content.append(header)
+        content.append(search_box)
+        content.append(scroll)
+        self.set_content(content)
+        self.load_apps()
+
+    def load_apps(self) -> None:
+        self.search.set_sensitive(False)
+        self.status.set_title("Finding applications…")
+        self.status.set_description("Checking pacman and Flatpak")
+        self.status.set_icon_name("system-search-symbolic")
+        self.stack.set_visible_child_name("status")
+        threading.Thread(target=self._discover, daemon=True).start()
+
+    def _discover(self) -> None:
+        try:
+            apps = discover_apps()
+            GLib.idle_add(self._populate, apps)
+        except Exception as error:  # defensive boundary for package metadata
+            GLib.idle_add(self._show_error, str(error))
+
+    def _populate(self, apps: list[InstalledApp]) -> bool:
+        while child := self.listbox.get_first_child():
+            self.listbox.remove(child)
+        self.rows = [AppRow(app, self.confirm_uninstall) for app in apps]
+        for row in self.rows:
+            self.listbox.append(row)
+        self.search.set_sensitive(True)
+        self.filter_rows(self.search)
+        self.stack.set_visible_child_name("apps" if apps else "status")
+        if not apps:
+            self.status.set_title("No applications found")
+            self.status.set_description("No visible desktop applications were detected")
+        return GLib.SOURCE_REMOVE
+
+    def _show_error(self, message: str) -> bool:
+        self.status.set_title("Could not load applications")
+        self.status.set_description(message)
+        self.status.set_icon_name("dialog-error-symbolic")
+        return GLib.SOURCE_REMOVE
+
+    def filter_rows(self, _entry: Gtk.SearchEntry) -> None:
+        query = self.search.get_text().strip().casefold()
+        for row in self.rows:
+            row.set_visible(not query or query in row.search_text)
+
+    def confirm_uninstall(self, app: InstalledApp) -> None:
+        if not app.package:
+            return
+        dialog = Adw.AlertDialog(
+            heading=f"Uninstall {app.name}?",
+            body=(
+                f"This will remove the {app.source} package “{app.package}”. "
+                "Review the terminal output before confirming."
+            ),
+        )
+        dialog.add_response("cancel", "Cancel")
+        dialog.add_response("uninstall", "Uninstall")
+        dialog.set_response_appearance("uninstall", Adw.ResponseAppearance.DESTRUCTIVE)
+        dialog.set_default_response("cancel")
+        dialog.set_close_response("cancel")
+        dialog.connect("response", self._on_confirmation, app)
+        dialog.present(self)
+
+    def _on_confirmation(self, _dialog: Adw.AlertDialog, response: str, app: InstalledApp) -> None:
+        if response != "uninstall" or not app.package:
+            return
+        package = shlex.quote(app.package)
+        if app.source == "Flatpak":
+            action = f"flatpak uninstall -- {package}"
+        else:
+            action = f"sudo pacman -Rns -- {package}"
+        command = f"{action}; status=$?; echo; read -r -p 'Press Enter to close…'; exit $status"
+        subprocess.Popen(["kitty", "--title", f"Uninstall {app.name}", "-e", "bash", "-lc", command])
+
+
+class OrbitAppsApplication(Adw.Application):
+    def __init__(self) -> None:
+        super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.DEFAULT_FLAGS)
+
+    def do_activate(self) -> None:
+        window = self.props.active_window or OrbitAppsWindow(self)
+        window.present()
+
+
+def install_css() -> None:
+    css = b"""
+    window { background: #050505; color: #f5f5f5; }
+    headerbar { background: #080808; border-bottom: 1px solid #303030; }
+    searchentry { margin: 0; }
+    .boxed-list { background: #0b0b0b; border: 1px solid #303030; border-radius: 4px; }
+    row { min-height: 58px; }
+    row:hover { background: #141414; }
+    button { border-radius: 3px; }
+    """
+    provider = Gtk.CssProvider()
+    provider.load_from_data(css)
+    Gtk.StyleContext.add_provider_for_display(
+        Gdk.Display.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+    )
+
+
+def main() -> int:
+    app = OrbitAppsApplication()
+    app.connect("startup", lambda _app: install_css())
+    return app.run()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

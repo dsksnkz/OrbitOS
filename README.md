@@ -6,7 +6,7 @@ fast access, clear feedback, small corners, and motion you can tune.
 ![OrbitOS desktop preview](assets/orbitos-desktop.png)
 
 Includes a Quickshell bar and home screen, control and time hubs, alarms,
-styled Rofi and wlogout, plus matching app themes.
+an installed-app manager, styled Rofi and wlogout, plus matching app themes.
 
 Click the Arch icon to go home. Click the clock for calendar, alarms, and timers.
 

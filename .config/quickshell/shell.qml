@@ -560,7 +560,7 @@ ShellRoot {
                             UtilityTile {
                                 icon: "󰆍"
                                 title: "OrbitOS Tools"
-                                subtitle: "14 desktop utilities"
+                                subtitle: "15 desktop utilities"
                                 command: "~/.config/quickshell/scripts/utility-menu.sh"
                                 onActivated: shell.controlOpen = false
                             }

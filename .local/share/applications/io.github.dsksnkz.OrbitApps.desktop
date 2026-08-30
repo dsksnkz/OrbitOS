@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Orbit Apps
+Comment=View and uninstall installed applications
+Exec=/home/matte/.local/bin/orbitos-apps
+Icon=system-software-install-symbolic
+Terminal=false
+Type=Application
+Categories=System;Settings;Utility;
+Keywords=apps;packages;uninstall;pacman;flatpak;
