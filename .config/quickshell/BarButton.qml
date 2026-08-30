@@ -7,15 +7,16 @@ Rectangle {
     property string hint: ""
     property bool active: false
     property bool compact: false
+    property bool rail: false
     signal clicked(int button)
     signal wheel(int delta)
 
     implicitWidth: Math.max(compact ? 28 : 34, textItem.implicitWidth + (compact ? 10 : 16))
     implicitHeight: 28
-    radius: 3
+    radius: rail ? height / 2 : 3
     scale: mouse.pressed ? 0.92 : (mouse.containsMouse ? 1.025 : 1.0)
-    color: active ? "#f5f5f5" : (mouse.containsMouse ? "#242424" : "#101010")
-    border.width: active ? 0 : 1
+    color: active ? "#f5f5f5" : (mouse.containsMouse ? "#242424" : (rail ? "transparent" : "#101010"))
+    border.width: active || rail ? 0 : 1
     border.color: mouse.containsMouse ? "#f5f5f5" : "#3a3a3a"
 
     Text {

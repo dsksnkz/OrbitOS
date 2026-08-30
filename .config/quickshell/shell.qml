@@ -101,19 +101,48 @@ ShellRoot {
 
             Rectangle {
                 anchors.fill: parent
-                radius: 3
-                color: "#050505"
-                border.width: 1
-                border.color: "#f5f5f5"
+                color: "transparent"
+
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.leftMargin: 18
+                    anchors.rightMargin: 18
+                    height: 1
+                    color: "#252525"
+                }
+
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: leftSide.implicitWidth + 14
+                    height: 36
+                    radius: 4
+                    color: "#050505"
+                    border.width: 1
+                    border.color: "#4a4a4a"
+
+                    Rectangle {
+                        anchors.left: parent.left
+                        anchors.leftMargin: 8
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 3
+                        height: 20
+                        radius: 2
+                        color: "#f5f5f5"
+                    }
+                }
 
                 Row {
                     id: leftSide
                     anchors.left: parent.left
-                    anchors.leftMargin: 6
+                    anchors.leftMargin: 7
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 5
 
                     BarButton {
+                        rail: true
                         label: "󰣇"
                         compact: true
                         hint: "Home"
@@ -137,12 +166,10 @@ ShellRoot {
                                 readonly property bool selected: Hyprland.focusedWorkspace
                                     && Hyprland.focusedWorkspace.id === workspaceId
 
-                                width: selected ? 31 : 24
+                                width: selected ? 32 : 21
                                 height: 28
-                                radius: 3
-                                color: selected ? "#f5f5f5" : (workspaceMouse.containsMouse ? "#242424" : "transparent")
-                                border.width: selected ? 0 : 1
-                                border.color: workspaceMouse.containsMouse ? "#f5f5f5" : "#2d2d2d"
+                                radius: selected ? 14 : 3
+                                color: selected ? "#f5f5f5" : (workspaceMouse.containsMouse ? "#202020" : "transparent")
 
                                 Text {
                                     anchors.centerIn: parent
@@ -151,6 +178,16 @@ ShellRoot {
                                     font.family: "JetBrainsMono Nerd Font"
                                     font.pixelSize: 11
                                     font.weight: parent.selected ? Font.Bold : Font.Medium
+                                }
+                                Rectangle {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    anchors.bottom: parent.bottom
+                                    anchors.bottomMargin: 2
+                                    width: parent.selected ? 10 : 3
+                                    height: 2
+                                    radius: 1
+                                    color: parent.selected ? "#050505" : "#555555"
+                                    Behavior on width { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
                                 }
                                 MouseArea {
                                     id: workspaceMouse
@@ -188,12 +225,12 @@ ShellRoot {
                     id: centerClock
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.verticalCenter: parent.verticalCenter
-                    width: clockMouse.containsMouse ? 174 : 164
-                    height: 28
-                    radius: 3
-                    color: clockMouse.containsMouse ? "#202020" : "#0d0d0d"
+                    width: clockMouse.containsMouse ? 196 : 186
+                    height: 36
+                    radius: 18
+                    color: clockMouse.containsMouse ? "#f5f5f5" : "#050505"
                     border.width: 1
-                    border.color: clockMouse.containsMouse ? "#f5f5f5" : "#343434"
+                    border.color: clockMouse.containsMouse ? "#f5f5f5" : "#686868"
 
                     Row {
                         anchors.centerIn: parent
@@ -209,7 +246,7 @@ ShellRoot {
                                 radius: 6
                                 color: "transparent"
                                 border.width: 1
-                                border.color: "#555555"
+                                border.color: clockMouse.containsMouse ? "#555555" : "#686868"
                             }
                             Item {
                                 anchors.fill: parent
@@ -219,7 +256,7 @@ ShellRoot {
                                     width: 3
                                     height: 3
                                     radius: 2
-                                    color: "#f5f5f5"
+                                    color: clockMouse.containsMouse ? "#050505" : "#f5f5f5"
                                 }
                                 RotationAnimator on rotation {
                                     from: 0
@@ -232,14 +269,14 @@ ShellRoot {
                         }
                         Text {
                             text: Qt.formatDateTime(clock.date, "HH:mm")
-                            color: "#f5f5f5"
+                            color: clockMouse.containsMouse ? "#050505" : "#f5f5f5"
                             font.family: "JetBrainsMono Nerd Font"
                             font.pixelSize: 13
                             font.weight: Font.Bold
                         }
                         Text {
                             text: Qt.formatDateTime(clock.date, "ddd dd")
-                            color: "#888888"
+                            color: clockMouse.containsMouse ? "#444444" : "#888888"
                             font.family: "Inter"
                             font.pixelSize: 10
                         }
@@ -271,14 +308,36 @@ ShellRoot {
                     Behavior on width { NumberAnimation { duration: 220; easing.type: Easing.OutBack } }
                 }
 
+                Rectangle {
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: rightSide.implicitWidth + 14
+                    height: 36
+                    radius: 4
+                    color: "#050505"
+                    border.width: 1
+                    border.color: "#4a4a4a"
+
+                    Rectangle {
+                        anchors.right: parent.right
+                        anchors.rightMargin: 8
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 3
+                        height: 20
+                        radius: 2
+                        color: "#f5f5f5"
+                    }
+                }
+
                 Row {
                     id: rightSide
                     anchors.right: parent.right
-                    anchors.rightMargin: 6
+                    anchors.rightMargin: 7
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 4
 
                     BarButton {
+                        rail: true
                         visible: bar.player !== null && bar.width > 1500
                         label: bar.player
                             ? ((bar.player.isPlaying ? "󰏤 " : "󰐊 ")
@@ -299,6 +358,7 @@ ShellRoot {
                     }
 
                     BarButton {
+                        rail: true
                         visible: bar.width > 1350
                         label: " " + bar.cpuUsage + "%   " + bar.memoryUsage + "%"
                         onClicked: Quickshell.execDetached(["missioncenter"])
@@ -339,6 +399,7 @@ ShellRoot {
                     }
 
                     BarButton {
+                        rail: true
                         label: bar.wifiEnabled ? "󰖩" : "󰖪"
                         active: bar.wifiEnabled && bar.ssid !== "Disconnected"
                         compact: true
@@ -351,6 +412,7 @@ ShellRoot {
                     }
 
                     BarButton {
+                        rail: true
                         label: bar.bluetoothEnabled ? "󰂯" : "󰂲"
                         active: bar.bluetoothEnabled
                         compact: true
@@ -358,6 +420,7 @@ ShellRoot {
                     }
 
                     BarButton {
+                        rail: true
                         label: bar.audioSink && bar.audioSink.audio
                             ? ((bar.audioSink.audio.muted ? "󰝟 " : "󰕾 ")
                                 + Math.round(bar.audioSink.audio.volume * 100) + "%")
@@ -374,6 +437,7 @@ ShellRoot {
                     }
 
                     BarButton {
+                        rail: true
                         visible: bar.brightness > 0
                         label: "󰃠 " + bar.brightness + "%"
                         onClicked: Quickshell.execDetached(["sh", "-lc", "brightnessctl set 50%"])
@@ -383,12 +447,14 @@ ShellRoot {
                     }
 
                     BarButton {
+                        rail: true
                         label: (UPower.onBattery ? "󰁹 " : "󰂄 ")
                             + Math.round(UPower.displayDevice.percentage * 100) + "%"
                         onClicked: Quickshell.execDetached(["sh", "-lc", "~/.config/quickshell/scripts/power-profile.sh"])
                     }
 
                     BarButton {
+                        rail: true
                         label: bar.notificationCount > 0 ? "󰂚 " + bar.notificationCount : "󰂚"
                         active: bar.dndEnabled
                         onClicked: button => {
@@ -400,6 +466,7 @@ ShellRoot {
                     }
 
                     BarButton {
+                        rail: true
                         label: "󰒓"
                         compact: true
                         active: shell.controlOpen
