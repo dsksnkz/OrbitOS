@@ -55,10 +55,8 @@ PopupWindow {
 
     Rectangle {
         anchors.fill: parent
-        radius: 3
+        radius: 0
         color: "#030303"
-        border.width: 1
-        border.color: "#343434"
         opacity: root.reveal
 
         MouseArea {

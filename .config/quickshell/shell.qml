@@ -118,7 +118,7 @@ ShellRoot {
                     anchors.verticalCenter: parent.verticalCenter
                     width: leftSide.implicitWidth + 14
                     height: 36
-                    radius: 4
+                    radius: 3
                     color: "#050505"
                     border.width: 1
                     border.color: "#4a4a4a"
@@ -313,7 +313,7 @@ ShellRoot {
                     anchors.verticalCenter: parent.verticalCenter
                     width: rightSide.implicitWidth + 14
                     height: 36
-                    radius: 4
+                    radius: 3
                     color: "#050505"
                     border.width: 1
                     border.color: "#4a4a4a"
@@ -497,7 +497,7 @@ ShellRoot {
                     radius: 3
                     color: "#050505"
                     border.width: 1
-                    border.color: "#f5f5f5"
+                    border.color: "#686868"
                     opacity: shell.controlOpen ? 1 : 0
                     transform: Translate { y: shell.controlOpen ? 0 : -12 }
 

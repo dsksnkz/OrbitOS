@@ -23,15 +23,15 @@ button {
 
 button:focus,
 button:hover {
-    color: #050505;
-    background-color: #f5f5f5;
+    color: #f5f5f5;
+    background-color: #202020;
     border-color: #f5f5f5;
     outline-style: none;
 }
 
-#lock { background-image: image(url("/usr/share/wlogout/icons/lock.png")); }
-#logout { background-image: image(url("/usr/share/wlogout/icons/logout.png")); }
-#suspend { background-image: image(url("/usr/share/wlogout/icons/suspend.png")); }
-#hibernate { background-image: image(url("/usr/share/wlogout/icons/hibernate.png")); }
-#reboot { background-image: image(url("/usr/share/wlogout/icons/reboot.png")); }
-#shutdown { background-image: image(url("/usr/share/wlogout/icons/shutdown.png")); }
+#lock { background-image: image(url("icons/lock.svg")); }
+#logout { background-image: image(url("icons/logout.svg")); }
+#suspend { background-image: image(url("icons/suspend.svg")); }
+#hibernate { background-image: image(url("icons/hibernate.svg")); }
+#reboot { background-image: image(url("icons/reboot.svg")); }
+#shutdown { background-image: image(url("icons/shutdown.svg")); }

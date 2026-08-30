@@ -95,7 +95,7 @@ PopupWindow {
         radius: 3
         color: "#050505"
         border.width: 1
-        border.color: "#f5f5f5"
+        border.color: "#686868"
         opacity: root.reveal
         scale: 0.96 + root.reveal * 0.04
         transform: Translate { y: (1 - root.reveal) * -14 }
@@ -103,8 +103,8 @@ PopupWindow {
         SequentialAnimation on border.color {
             running: root.opened
             loops: Animation.Infinite
-            ColorAnimation { to: "#555555"; duration: 2400; easing.type: Easing.InOutSine }
-            ColorAnimation { to: "#f5f5f5"; duration: 2400; easing.type: Easing.InOutSine }
+            ColorAnimation { to: "#3d3d3d"; duration: 2400; easing.type: Easing.InOutSine }
+            ColorAnimation { to: "#777777"; duration: 2400; easing.type: Easing.InOutSine }
         }
 
         Column {
