@@ -18,10 +18,10 @@ PopupWindow {
     }
 
     anchor.window: root.anchorWindow
-    anchor.rect.x: 0
-    anchor.rect.y: root.anchorWindow ? root.anchorWindow.height + 6 : 46
-    implicitWidth: root.anchorWindow ? root.anchorWindow.width : 1200
-    implicitHeight: root.anchorWindow ? Math.max(620, root.anchorWindow.screen.height - 58) : 800
+    anchor.rect.x: -6
+    anchor.rect.y: -6
+    implicitWidth: root.anchorWindow ? root.anchorWindow.screen.width : 1200
+    implicitHeight: root.anchorWindow ? root.anchorWindow.screen.height : 800
     visible: opened
     color: "transparent"
 
