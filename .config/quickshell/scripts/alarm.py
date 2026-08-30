@@ -14,6 +14,7 @@ from pathlib import Path
 
 STATE_DIR = Path.home() / ".local/state/magnetism"
 STATE_FILE = STATE_DIR / "alarms.json"
+ALARM_RING = Path(__file__).with_name("alarm-ring.sh")
 
 
 def run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
@@ -87,12 +88,7 @@ def add_alarm() -> int:
         f"--on-calendar={target:%Y-%m-%d %H:%M:%S}",
         "--timer-property=AccuracySec=1s",
         "--collect",
-        "/usr/bin/notify-send",
-        "-u",
-        "critical",
-        "-a",
-        "Magnetism Alarm",
-        "Alarm",
+        str(ALARM_RING),
         label,
     ]
     result = run(command, capture_output=True)
