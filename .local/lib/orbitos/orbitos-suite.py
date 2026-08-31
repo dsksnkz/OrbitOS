@@ -41,6 +41,28 @@ DEFAULTS: dict[str, object] = {
     "gaps_out": 6,
     "animation_speed": 100,
     "direct_scanout": True,
+    "border_size": 1,
+    "shadow": True,
+    "motion_blur": True,
+    "inactive_opacity": 94,
+    "pointer_sensitivity": 0,
+    "accel_profile": "flat",
+    "natural_scroll": False,
+    "left_handed": False,
+    "scroll_factor": 100,
+    "tap_to_click": True,
+    "disable_while_typing": True,
+    "clickfinger": False,
+    "repeat_rate": 25,
+    "repeat_delay": 600,
+    "numlock": False,
+    "vrr": False,
+    "cursor_size": 15,
+    "workspace_wraparound": True,
+    "focus_follows_mouse": 1,
+    "resize_on_border": False,
+    "allow_tearing": False,
+    "layout": "dwindle",
 }
 
 
@@ -85,22 +107,150 @@ def save_json(path: Path, value: dict) -> None:
     temporary.replace(path)
 
 
-def hypr_keyword(name: str, value: object) -> None:
-    run(["hyprctl", "keyword", name, str(value)], timeout=3)
+def lua_literal(value: object) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return str(value)
+    return json.dumps(str(value))
+
+
+def hypr_eval(code: str) -> bool:
+    result = run(["hyprctl", "eval", code], timeout=5)
+    return bool(result and result.returncode == 0 and not result.stdout.lower().startswith("error"))
+
+
+def hypr_keyword(name: str, value: object) -> bool:
+    """Apply a config value through Hyprland's non-legacy Lua parser."""
+    nested = lua_literal(value)
+    for key in reversed(name.split(":")):
+        nested = "{ " + key.replace("-", "_") + " = " + nested + " }"
+    return hypr_eval(f"hl.config({nested})")
+
+
+def hypr_option(name: str, fallback: object) -> object:
+    try:
+        data = json.loads(output(["hyprctl", "getoption", name, "-j"], "{}"))
+    except ValueError:
+        return fallback
+    for key in ("bool", "int", "float", "str"):
+        if key in data:
+            return data[key]
+    if "css" in data:
+        try:
+            return int(str(data["css"]).split()[0])
+        except (ValueError, IndexError):
+            pass
+    return fallback
+
+
+def live_settings() -> dict[str, object]:
+    animation_state = STATE_DIR / "animation-speed"
+    try:
+        speed = int(animation_state.read_text().strip())
+    except (OSError, ValueError):
+        speed = 100
+    return {
+        "animations": bool(hypr_option("animations:enabled", True)),
+        "blur": bool(hypr_option("decoration:blur:enabled", True)),
+        "rounding": int(hypr_option("decoration:rounding", 3)),
+        "gaps_in": int(hypr_option("general:gaps_in", 3)),
+        "gaps_out": int(hypr_option("general:gaps_out", 6)),
+        "animation_speed": speed,
+        "direct_scanout": bool(hypr_option("render:direct_scanout", 1)),
+        "border_size": int(hypr_option("general:border_size", 1)),
+        "shadow": bool(hypr_option("decoration:shadow:enabled", True)),
+        "motion_blur": bool(hypr_option("decoration:motion_blur:enabled", True)),
+        "inactive_opacity": round(float(hypr_option("decoration:inactive_opacity", 0.94)) * 100),
+        "pointer_sensitivity": round(float(hypr_option("input:sensitivity", 0.0)) * 10),
+        "accel_profile": str(hypr_option("input:accel_profile", "flat")),
+        "natural_scroll": bool(hypr_option("input:touchpad:natural_scroll", False)),
+        "left_handed": bool(hypr_option("input:left_handed", False)),
+        "scroll_factor": round(float(hypr_option("input:scroll_factor", 1.0)) * 100),
+        "tap_to_click": bool(hypr_option("input:touchpad:tap-to-click", True)),
+        "disable_while_typing": bool(hypr_option("input:touchpad:disable_while_typing", True)),
+        "clickfinger": bool(hypr_option("input:touchpad:clickfinger_behavior", False)),
+        "repeat_rate": int(hypr_option("input:repeat_rate", 25)),
+        "repeat_delay": int(hypr_option("input:repeat_delay", 600)),
+        "numlock": bool(hypr_option("input:numlock_by_default", False)),
+        "vrr": bool(hypr_option("misc:vrr", 0)),
+        "cursor_size": int(os.environ.get("HYPRCURSOR_SIZE", "15")),
+        "workspace_wraparound": bool(hypr_option("animations:workspace_wraparound", True)),
+        "focus_follows_mouse": int(hypr_option("input:follow_mouse", 1)),
+        "resize_on_border": bool(hypr_option("general:resize_on_border", False)),
+        "allow_tearing": bool(hypr_option("general:allow_tearing", False)),
+        "layout": str(hypr_option("general:layout", "dwindle")),
+    }
 
 
 def apply_saved_settings() -> int:
-    settings = {**DEFAULTS, **load_json(SETTINGS_FILE, DEFAULTS)}
-    hypr_keyword("animations:enabled", "true" if settings["animations"] else "false")
-    hypr_keyword("decoration:blur:enabled", "true" if settings["blur"] else "false")
-    hypr_keyword("decoration:rounding", int(settings["rounding"]))
-    hypr_keyword("general:gaps_in", int(settings["gaps_in"]))
-    hypr_keyword("general:gaps_out", int(settings["gaps_out"]))
-    hypr_keyword("render:direct_scanout", "true" if settings["direct_scanout"] else "false")
+    settings = load_json(SETTINGS_FILE, {})
+    mappings = {
+        "animations": ("animations:enabled", bool),
+        "blur": ("decoration:blur:enabled", bool),
+        "rounding": ("decoration:rounding", int),
+        "gaps_in": ("general:gaps_in", int),
+        "gaps_out": ("general:gaps_out", int),
+        "direct_scanout": ("render:direct_scanout", bool),
+        "border_size": ("general:border_size", int),
+        "shadow": ("decoration:shadow:enabled", bool),
+        "motion_blur": ("decoration:motion_blur:enabled", bool),
+        "inactive_opacity": ("decoration:inactive_opacity", lambda value: int(value) / 100),
+        "pointer_sensitivity": ("input:sensitivity", lambda value: int(value) / 10),
+        "accel_profile": ("input:accel_profile", str),
+        "natural_scroll": ("input:touchpad:natural_scroll", bool),
+        "left_handed": ("input:left_handed", bool),
+        "scroll_factor": ("input:scroll_factor", lambda value: int(value) / 100),
+        "tap_to_click": ("input:touchpad:tap-to-click", bool),
+        "disable_while_typing": ("input:touchpad:disable_while_typing", bool),
+        "clickfinger": ("input:touchpad:clickfinger_behavior", bool),
+        "repeat_rate": ("input:repeat_rate", int),
+        "repeat_delay": ("input:repeat_delay", int),
+        "numlock": ("input:numlock_by_default", bool),
+        "vrr": ("misc:vrr", lambda value: 1 if value else 0),
+        "kb_layout": ("input:kb_layout", str),
+        "workspace_wraparound": ("animations:workspace_wraparound", bool),
+        "focus_follows_mouse": ("input:follow_mouse", int),
+        "resize_on_border": ("general:resize_on_border", bool),
+        "allow_tearing": ("general:allow_tearing", bool),
+        "layout": ("general:layout", str),
+    }
+    for key, (option, convert) in mappings.items():
+        if key in settings:
+            hypr_keyword(option, convert(settings[key]))
     speed_script = QS_SCRIPTS / "animation-speed.py"
-    if speed_script.exists():
+    if speed_script.exists() and "animation_speed" in settings:
         run([str(speed_script), "set", str(int(settings["animation_speed"]))], timeout=8)
+    monitor = settings.get("monitor")
+    if isinstance(monitor, dict):
+        connected = {item.get("name") for item in monitor_snapshot()}
+        if monitor.get("output") in connected:
+            apply_monitor(monitor)
+    if "cursor_size" in settings:
+        run(["hyprctl", "setcursor", os.environ.get("XCURSOR_THEME") or "breeze_cursors", str(int(settings["cursor_size"]))])
     return 0
+
+
+def monitor_snapshot() -> list[dict]:
+    try:
+        value = json.loads(output(["hyprctl", "monitors", "-j"], "[]"))
+        return value if isinstance(value, list) else []
+    except ValueError:
+        return []
+
+
+def apply_monitor(config: dict) -> bool:
+    required = {"output", "mode", "position", "scale", "transform"}
+    if not required <= config.keys():
+        return False
+    command = (
+        "hl.monitor({ output = " + lua_literal(config["output"])
+        + ", mode = " + lua_literal(config["mode"])
+        + ", position = " + lua_literal(config["position"])
+        + ", scale = " + lua_literal(float(config["scale"]))
+        + ", transform = " + lua_literal(int(config["transform"])) + " })"
+    )
+    return hypr_eval(command)
 
 
 def dnd_enabled() -> bool:
@@ -327,10 +477,11 @@ class OrbitWindow(Adw.ApplicationWindow):
     def __init__(self, application: Adw.Application, page: str) -> None:
         super().__init__(application=application, title="OrbitOS")
         self.page = page
-        self.settings = {**DEFAULTS, **load_json(SETTINGS_FILE, DEFAULTS)}
+        self.settings = {**DEFAULTS, **live_settings(), **load_json(SETTINGS_FILE, {})}
         self.telemetry = Telemetry()
         self.telemetry_busy = False
         self.speed_timeout = 0
+        self.setting_timeouts: dict[str, int] = {}
         self.set_default_size(1080, 760)
         self.set_size_request(760, 560)
 
@@ -665,8 +816,14 @@ class OrbitWindow(Adw.ApplicationWindow):
     def build_settings(self) -> Gtk.Widget:
         scroll, content = self.page_shell(
             "SETTINGS", "Make OrbitOS feel like yours.",
-            "Useful controls are grouped by intent, with immediate feedback and persistent desktop behavior.",
+            "Display, input, sound, power and desktop behavior—live, persistent, and grouped by intent.",
         )
+
+        diagnostics = output(["hyprctl", "configerrors"], "").strip()
+        status = Adw.Banner(title="Hyprland configuration is healthy" if not diagnostics else "Hyprland reported configuration errors")
+        status.set_revealed(True)
+        content.append(status)
+
         experience = Adw.PreferencesGroup(title="Experience", description="Motion and visual rhythm")
         self.animations_row = Adw.SwitchRow(title="Animations", subtitle="Smooth workspace, window and layer transitions")
         self.animations_row.set_active(bool(self.settings["animations"]))
@@ -676,6 +833,14 @@ class OrbitWindow(Adw.ApplicationWindow):
         self.blur_row.set_active(bool(self.settings["blur"]))
         self.blur_row.connect("notify::active", lambda row, _param: self.setting_bool("blur", row.get_active(), "decoration:blur:enabled"))
         experience.add(self.blur_row)
+        shadow = Adw.SwitchRow(title="Window shadows", subtitle="Give floating surfaces a subtle depth cue")
+        shadow.set_active(bool(self.settings["shadow"]))
+        shadow.connect("notify::active", lambda row, _param: self.setting_bool("shadow", row.get_active(), "decoration:shadow:enabled"))
+        experience.add(shadow)
+        motion_blur = Adw.SwitchRow(title="Motion blur", subtitle="OrbitOS compositor motion effect")
+        motion_blur.set_active(bool(self.settings["motion_blur"]))
+        motion_blur.connect("notify::active", lambda row, _param: self.setting_bool("motion_blur", row.get_active(), "decoration:motion_blur:enabled"))
+        experience.add(motion_blur)
         speed = Adw.ActionRow(title="Animation speed", subtitle="Calm 50%  ·  balanced 100%  ·  swift 180%")
         self.speed_scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 50, 180, 5)
         self.speed_scale.set_value(float(self.settings["animation_speed"]))
@@ -685,23 +850,196 @@ class OrbitWindow(Adw.ApplicationWindow):
         self.speed_scale.connect("value-changed", self.speed_changed)
         speed.add_suffix(self.speed_scale)
         experience.add(speed)
+        opacity = self.scale_row("Inactive-window opacity", "Keep focus clear without hiding context", 70, 100, 1, self.settings["inactive_opacity"])
+        opacity[1].connect("value-changed", lambda scale: self.delayed_setting("inactive_opacity", round(scale.get_value()), "decoration:inactive_opacity", lambda value: value / 100))
+        experience.add(opacity[0])
         content.append(experience)
 
         layout = Adw.PreferencesGroup(title="Desktop geometry", description="Small corners and deliberate spacing are the OrbitOS default")
-        for key, title, low, high in (
-            ("rounding", "Corner radius", 0, 16),
-            ("gaps_in", "Inner gaps", 0, 20),
-            ("gaps_out", "Outer gaps", 0, 24),
+        for key, title, subtitle, low, high, option in (
+            ("rounding", "Corner radius", "Applies to tiled and floating windows", 0, 16, "decoration:rounding"),
+            ("gaps_in", "Inner gaps", "Space between neighboring windows", 0, 20, "general:gaps_in"),
+            ("gaps_out", "Outer gaps", "Space between windows and screen edges", 0, 24, "general:gaps_out"),
+            ("border_size", "Border width", "Focused-window edge width", 0, 5, "general:border_size"),
         ):
-            row = Adw.ActionRow(title=title)
-            scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, low, high, 1)
-            scale.set_value(float(self.settings[key]))
-            scale.set_size_request(230, -1)
-            scale.set_draw_value(True)
-            scale.connect("value-changed", lambda widget, setting=key: self.geometry_changed(setting, round(widget.get_value())))
-            row.add_suffix(scale)
+            row, scale = self.scale_row(title, subtitle, low, high, 1, self.settings[key])
+            scale.connect("value-changed", lambda widget, setting=key, target=option: self.delayed_setting(setting, round(widget.get_value()), target))
             layout.add(row)
         content.append(layout)
+
+        windows = Adw.PreferencesGroup(title="Windows and workspaces", description="Focus, tiling and edge behavior")
+        layout_row = Adw.ActionRow(title="Tiling layout", subtitle="Dwindle is compact; master keeps one primary window")
+        layout_values = ["dwindle", "master"]
+        tiling_dropdown = Gtk.DropDown.new_from_strings(["Dwindle", "Master"])
+        tiling_dropdown.set_selected(layout_values.index(self.settings["layout"]) if self.settings["layout"] in layout_values else 0)
+        tiling_dropdown.connect("notify::selected", lambda widget, _param: self.setting_value("layout", layout_values[widget.get_selected()], "general:layout"))
+        layout_row.add_suffix(tiling_dropdown)
+        windows.add(layout_row)
+        focus_row = Adw.ActionRow(title="Focus follows pointer", subtitle="Choose how pointer movement changes keyboard focus")
+        focus_values = [0, 1, 2, 3]
+        focus_dropdown = Gtk.DropDown.new_from_strings(["Click to focus", "Follow pointer", "Loose follow", "Always follow"])
+        focus_value = int(self.settings["focus_follows_mouse"])
+        focus_dropdown.set_selected(focus_values.index(focus_value) if focus_value in focus_values else 1)
+        focus_dropdown.connect("notify::selected", lambda widget, _param: self.setting_value("focus_follows_mouse", focus_values[widget.get_selected()], "input:follow_mouse"))
+        focus_row.add_suffix(focus_dropdown)
+        windows.add(focus_row)
+        for key, title, subtitle, option in (
+            ("workspace_wraparound", "Workspace wraparound", "Continue from the last workspace back to the first", "animations:workspace_wraparound"),
+            ("resize_on_border", "Resize from window borders", "Drag a border or gap to resize tiled windows", "general:resize_on_border"),
+            ("allow_tearing", "Allow tearing", "Lowest latency for explicitly configured games", "general:allow_tearing"),
+        ):
+            row = Adw.SwitchRow(title=title, subtitle=subtitle)
+            row.set_active(bool(self.settings[key]))
+            row.connect("notify::active", lambda widget, _param, setting=key, target=option: self.setting_bool(setting, widget.get_active(), target))
+            windows.add(row)
+        content.append(windows)
+
+        displays = Adw.PreferencesGroup(title="Displays", description="Safe monitor changes automatically roll back after 12 seconds")
+        self.monitors = monitor_snapshot()
+        self.monitor = next((item for item in self.monitors if item.get("focused")), self.monitors[0] if self.monitors else None)
+        if self.monitor:
+            display_name = self.monitor.get("description") or self.monitor.get("name", "Display")
+            display_info = Adw.ActionRow(
+                title=display_name,
+                subtitle=f"{self.monitor['width']}×{self.monitor['height']} · {self.monitor['refreshRate']:.0f} Hz · {self.monitor['name']}",
+            )
+            display_info.add_prefix(Gtk.Image.new_from_icon_name("video-display-symbolic"))
+            displays.add(display_info)
+            mode_row = Adw.ActionRow(title="Resolution and refresh rate", subtitle="Choose one of the monitor's advertised modes")
+            self.monitor_modes = list(dict.fromkeys(self.monitor.get("availableModes", [])))
+            self.mode_dropdown = Gtk.DropDown.new_from_strings(self.monitor_modes or ["preferred"])
+            current_prefix = f"{self.monitor['width']}x{self.monitor['height']}@{self.monitor['refreshRate']:.2f}"
+            current_index = next((i for i, mode in enumerate(self.monitor_modes) if mode.lower().replace("hz", "").startswith(current_prefix.lower())), 0)
+            self.mode_dropdown.set_selected(current_index)
+            mode_row.add_suffix(self.mode_dropdown)
+            displays.add(mode_row)
+            scale_row = Adw.ActionRow(title="Display scale", subtitle="Larger values make interface elements bigger")
+            self.monitor_scales = ["1.00", "1.25", "1.50", "1.75", "2.00"]
+            self.monitor_scale_dropdown = Gtk.DropDown.new_from_strings(self.monitor_scales)
+            self.monitor_scale_dropdown.set_selected(min(range(len(self.monitor_scales)), key=lambda i: abs(float(self.monitor_scales[i]) - float(self.monitor.get("scale", 1)))))
+            scale_row.add_suffix(self.monitor_scale_dropdown)
+            displays.add(scale_row)
+            orientation_row = Adw.ActionRow(title="Orientation", subtitle="Rotate the desktop output")
+            self.monitor_transforms = [0, 1, 2, 3]
+            self.orientation_dropdown = Gtk.DropDown.new_from_strings(["Landscape", "Portrait right", "Landscape flipped", "Portrait left"])
+            transform = int(self.monitor.get("transform", 0))
+            self.orientation_dropdown.set_selected(self.monitor_transforms.index(transform) if transform in self.monitor_transforms else 0)
+            orientation_row.add_suffix(self.orientation_dropdown)
+            displays.add(orientation_row)
+            apply_display = Adw.ActionRow(title="Apply display configuration", subtitle="Preview the selected mode, scale and orientation")
+            apply_button = Gtk.Button(label="Apply")
+            apply_button.add_css_class("suggested-action")
+            apply_button.set_valign(Gtk.Align.CENTER)
+            apply_button.connect("clicked", self.preview_monitor)
+            apply_display.add_suffix(apply_button)
+            displays.add(apply_display)
+        vrr = Adw.SwitchRow(title="Variable refresh rate", subtitle="Allow VRR on compatible displays and games")
+        vrr.set_active(bool(self.settings["vrr"]))
+        vrr.connect("notify::active", lambda row, _param: self.setting_value("vrr", row.get_active(), "misc:vrr", lambda value: 1 if value else 0))
+        displays.add(vrr)
+        if shutil.which("brightnessctl"):
+            brightness = self.current_brightness()
+            bright_row, bright_scale = self.scale_row("Brightness", "Hardware backlight level", 5, 100, 1, brightness)
+            bright_scale.connect("value-changed", lambda scale: self.set_brightness(round(scale.get_value())))
+            displays.add(bright_row)
+        content.append(displays)
+
+        pointer = Adw.PreferencesGroup(title="Mouse and pointer", description="Controls apply to Hyprland input devices immediately")
+        try:
+            devices = json.loads(output(["hyprctl", "devices", "-j"], "{}"))
+        except ValueError:
+            devices = {}
+        pointer_names = [item.get("name", "Pointer") for item in devices.get("mice", [])]
+        connected_pointer = Adw.ActionRow(
+            title=f"Connected pointers · {len(pointer_names)}",
+            subtitle=" · ".join(pointer_names[:3]) + (" · …" if len(pointer_names) > 3 else ""),
+        )
+        connected_pointer.add_prefix(Gtk.Image.new_from_icon_name("input-mouse-symbolic"))
+        pointer.add(connected_pointer)
+        sensitivity = self.scale_row("Pointer sensitivity", "Negative is slower; positive is faster", -10, 10, 1, self.settings["pointer_sensitivity"])
+        sensitivity[1].connect("value-changed", lambda scale: self.delayed_setting("pointer_sensitivity", round(scale.get_value()), "input:sensitivity", lambda value: value / 10))
+        pointer.add(sensitivity[0])
+        acceleration = Adw.ActionRow(title="Acceleration profile", subtitle="Flat is consistent; adaptive responds to movement speed")
+        accel_values = ["flat", "adaptive"]
+        accel_dropdown = Gtk.DropDown.new_from_strings(["Flat", "Adaptive"])
+        accel_dropdown.set_selected(accel_values.index(self.settings["accel_profile"]) if self.settings["accel_profile"] in accel_values else 0)
+        accel_dropdown.connect("notify::selected", lambda widget, _param: self.setting_value("accel_profile", accel_values[widget.get_selected()], "input:accel_profile"))
+        acceleration.add_suffix(accel_dropdown)
+        pointer.add(acceleration)
+        scroll_speed = self.scale_row("Scroll speed", "Multiplier for wheel and touchpad scrolling", 25, 200, 5, self.settings["scroll_factor"])
+        scroll_speed[1].connect("value-changed", lambda scale: self.delayed_setting("scroll_factor", round(scale.get_value()), "input:scroll_factor", lambda value: value / 100))
+        pointer.add(scroll_speed[0])
+        for key, title, subtitle, option in (
+            ("natural_scroll", "Natural scrolling", "Content follows your fingers", "input:touchpad:natural_scroll"),
+            ("left_handed", "Left-handed buttons", "Swap primary and secondary pointer buttons", "input:left_handed"),
+        ):
+            row = Adw.SwitchRow(title=title, subtitle=subtitle)
+            row.set_active(bool(self.settings[key]))
+            row.connect("notify::active", lambda widget, _param, setting=key, target=option: self.setting_bool(setting, widget.get_active(), target))
+            pointer.add(row)
+        content.append(pointer)
+
+        touchpad = Adw.PreferencesGroup(title="Touchpad")
+        for key, title, subtitle, option in (
+            ("tap_to_click", "Tap to click", "A light tap performs a primary click", "input:touchpad:tap-to-click"),
+            ("disable_while_typing", "Disable while typing", "Prevent accidental pointer movement", "input:touchpad:disable_while_typing"),
+            ("clickfinger", "Clickfinger buttons", "Choose buttons from finger count", "input:touchpad:clickfinger_behavior"),
+        ):
+            row = Adw.SwitchRow(title=title, subtitle=subtitle)
+            row.set_active(bool(self.settings[key]))
+            row.connect("notify::active", lambda widget, _param, setting=key, target=option: self.setting_bool(setting, widget.get_active(), target))
+            touchpad.add(row)
+        content.append(touchpad)
+
+        keyboard = Adw.PreferencesGroup(title="Keyboard", description="Layout and repeat behavior")
+        keyboard_names = [item.get("name", "Keyboard") for item in devices.get("keyboards", []) if not item.get("name", "").startswith("video-bus")]
+        connected_keyboard = Adw.ActionRow(
+            title=f"Connected keyboards · {len(keyboard_names)}",
+            subtitle=" · ".join(keyboard_names[:3]) + (" · …" if len(keyboard_names) > 3 else ""),
+        )
+        connected_keyboard.add_prefix(Gtk.Image.new_from_icon_name("input-keyboard-symbolic"))
+        keyboard.add(connected_keyboard)
+        layout_row = Adw.ActionRow(title="Keyboard layout", subtitle="Applied to every Hyprland keyboard")
+        layouts = ["us", "gb", "de", "fr", "es"]
+        layout_names = ["English (US)", "English (UK)", "German", "French", "Spanish"]
+        layout_dropdown = Gtk.DropDown.new_from_strings(layout_names)
+        current_layout = str(hypr_option("input:kb_layout", "us"))
+        layout_dropdown.set_selected(layouts.index(current_layout) if current_layout in layouts else 0)
+        layout_dropdown.connect("notify::selected", lambda widget, _param: self.setting_value("kb_layout", layouts[widget.get_selected()], "input:kb_layout"))
+        layout_row.add_suffix(layout_dropdown)
+        keyboard.add(layout_row)
+        repeat_rate = self.scale_row("Repeat rate", "Characters repeated per second", 10, 60, 1, self.settings["repeat_rate"])
+        repeat_rate[1].connect("value-changed", lambda scale: self.delayed_setting("repeat_rate", round(scale.get_value()), "input:repeat_rate"))
+        keyboard.add(repeat_rate[0])
+        repeat_delay = self.scale_row("Repeat delay", "Milliseconds before a held key repeats", 200, 1000, 50, self.settings["repeat_delay"])
+        repeat_delay[1].connect("value-changed", lambda scale: self.delayed_setting("repeat_delay", round(scale.get_value()), "input:repeat_delay"))
+        keyboard.add(repeat_delay[0])
+        numlock = Adw.SwitchRow(title="Num Lock on startup", subtitle="Enable the numeric keypad after login")
+        numlock.set_active(bool(self.settings["numlock"]))
+        numlock.connect("notify::active", lambda row, _param: self.setting_bool("numlock", row.get_active(), "input:numlock_by_default"))
+        keyboard.add(numlock)
+        content.append(keyboard)
+
+        sound = Adw.PreferencesGroup(title="Sound", description="PipeWire output and microphone controls")
+        sink_volume, sink_muted = self.wp_volume("@DEFAULT_AUDIO_SINK@")
+        output_row, output_scale = self.scale_row("Output volume", "Speakers and headphones", 0, 125, 1, sink_volume)
+        output_scale.connect("value-changed", lambda scale: self.set_wp_volume("@DEFAULT_AUDIO_SINK@", round(scale.get_value())))
+        sound.add(output_row)
+        output_mute = Adw.SwitchRow(title="Mute output", subtitle="Silence all playback")
+        output_mute.set_active(sink_muted)
+        output_mute.connect("notify::active", lambda row, _param: run(["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "1" if row.get_active() else "0"]))
+        sound.add(output_mute)
+        mic_volume, mic_muted = self.wp_volume("@DEFAULT_AUDIO_SOURCE@")
+        mic_row, mic_scale = self.scale_row("Microphone level", "Default recording input", 0, 125, 1, mic_volume)
+        mic_scale.connect("value-changed", lambda scale: self.set_wp_volume("@DEFAULT_AUDIO_SOURCE@", round(scale.get_value())))
+        sound.add(mic_row)
+        mic_mute = Adw.SwitchRow(title="Mute microphone", subtitle="Prevent applications from recording audio")
+        mic_mute.set_active(mic_muted)
+        mic_mute.connect("notify::active", lambda row, _param: run(["wpctl", "set-mute", "@DEFAULT_AUDIO_SOURCE@", "1" if row.get_active() else "0"]))
+        sound.add(mic_mute)
+        mixer = self.command_row("Advanced audio mixer", "Per-device and per-application routing", "audio-volume-high-symbolic", ["pavucontrol"])
+        sound.add(mixer)
+        content.append(sound)
 
         desktop = Adw.PreferencesGroup(title="Desktop surfaces", description="Fast routes to the parts of OrbitOS you use most")
         for title, subtitle, icon, callback in (
@@ -717,6 +1055,20 @@ class OrbitWindow(Adw.ApplicationWindow):
             desktop.add(row)
         content.append(desktop)
 
+        connectivity = Adw.PreferencesGroup(title="Connectivity")
+        wifi_active = output(["nmcli", "-t", "-f", "WIFI", "general"], "disabled") == "enabled"
+        wifi = Adw.SwitchRow(title="Wi-Fi", subtitle="Enable or disable the wireless radio")
+        wifi.set_active(wifi_active)
+        wifi.connect("notify::active", lambda row, _param: run(["nmcli", "radio", "wifi", "on" if row.get_active() else "off"]))
+        connectivity.add(wifi)
+        bluetooth_active = "Powered: yes" in output(["bluetoothctl", "show"], "")
+        bluetooth = Adw.SwitchRow(title="Bluetooth", subtitle="Enable or disable the Bluetooth radio")
+        bluetooth.set_active(bluetooth_active)
+        bluetooth.connect("notify::active", lambda row, _param: run(["bluetoothctl", "power", "on" if row.get_active() else "off"]))
+        connectivity.add(bluetooth)
+        connectivity.add(self.command_row("Network connections", "Wi-Fi, Ethernet, DNS and saved profiles", "network-wired-symbolic", ["nm-connection-editor"]))
+        content.append(connectivity)
+
         performance = Adw.PreferencesGroup(title="Power and performance", description="Choose a system policy, or let Game Accelerator coordinate a session")
         profile = Adw.ActionRow(title="Power profile", subtitle="Changes the system power policy")
         profiles = ["power-saver", "balanced", "performance"]
@@ -730,6 +1082,10 @@ class OrbitWindow(Adw.ApplicationWindow):
         direct.set_active(bool(self.settings["direct_scanout"]))
         direct.connect("notify::active", lambda row, _param: self.setting_bool("direct_scanout", row.get_active(), "render:direct_scanout"))
         performance.add(direct)
+        caffeine = Adw.SwitchRow(title="Caffeine", subtitle="Pause automatic locking and idle actions")
+        caffeine.set_active(caffeine_enabled())
+        caffeine.connect("notify::active", lambda row, _param: async_call(lambda: set_caffeine(row.get_active())))
+        performance.add(caffeine)
         game = Adw.ActionRow(title="Game Accelerator", subtitle="Telemetry, Boost sessions and memory tools")
         game.add_prefix(Gtk.Image.new_from_icon_name("applications-games-symbolic"))
         game.set_activatable(True)
@@ -737,7 +1093,18 @@ class OrbitWindow(Adw.ApplicationWindow):
         performance.add(game)
         content.append(performance)
 
-        system = Adw.PreferencesGroup(title="System tools")
+        focus = Adw.PreferencesGroup(title="Focus and accessibility")
+        dnd = Adw.SwitchRow(title="Do Not Disturb", subtitle="Silence notification popups while preserving history")
+        dnd.set_active(dnd_enabled())
+        dnd.connect("notify::active", lambda row, _param: async_call(lambda: set_dnd(row.get_active())))
+        focus.add(dnd)
+        cursor = self.scale_row("Cursor size", "Hyprland and XWayland pointer size", 12, 48, 1, self.settings["cursor_size"])
+        cursor[1].connect("value-changed", lambda scale: self.cursor_size_changed(round(scale.get_value())))
+        focus.add(cursor[0])
+        focus.add(self.command_row("Lock screen", "Secure the session immediately", "system-lock-screen-symbolic", ["hyprlock"]))
+        content.append(focus)
+
+        system = Adw.PreferencesGroup(title="System and maintenance")
         for title, subtitle, icon, command in (
             ("Installed apps", "Review and uninstall software", "system-software-install-symbolic", ["orbitos-apps"]),
             ("Audio", "Output, input and application volume", "audio-volume-high-symbolic", ["pavucontrol"]),
@@ -750,6 +1117,19 @@ class OrbitWindow(Adw.ApplicationWindow):
             row.set_activatable(True)
             row.connect("activated", lambda _row, args=command: detached(args))
             system.add(row)
+        reload_row = Adw.ActionRow(title="Reload OrbitOS", subtitle="Reload Hyprland configuration and restart the top bar")
+        reload_row.add_prefix(Gtk.Image.new_from_icon_name("view-refresh-symbolic"))
+        reload_row.set_activatable(True)
+        reload_row.connect("activated", lambda *_: self.reload_orbitos())
+        system.add(reload_row)
+        logs = self.command_row("System logs", "Open recent user-session errors", "text-x-generic-symbolic", ["kitty", "--title", "OrbitOS Logs", "-e", "journalctl", "--user", "-f"])
+        system.add(logs)
+        reset_row = Adw.ActionRow(title="Reset OrbitOS settings", subtitle="Return app-managed values to the dotfile defaults")
+        reset_row.add_prefix(Gtk.Image.new_from_icon_name("edit-undo-symbolic"))
+        reset_row.set_activatable(True)
+        reset_row.add_css_class("property")
+        reset_row.connect("activated", self.confirm_reset_settings)
+        system.add(reset_row)
         content.append(system)
 
         about = Adw.PreferencesGroup(title="About")
@@ -759,14 +1139,207 @@ class OrbitWindow(Adw.ApplicationWindow):
         content.append(about)
         return scroll
 
+    @staticmethod
+    def scale_row(title: str, subtitle: str, low: float, high: float, step: float, value: object) -> tuple[Adw.ActionRow, Gtk.Scale]:
+        row = Adw.ActionRow(title=title, subtitle=subtitle)
+        scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, low, high, step)
+        scale.set_value(float(value))
+        scale.set_size_request(260, -1)
+        scale.set_valign(Gtk.Align.CENTER)
+        scale.set_draw_value(True)
+        scale.set_digits(0 if step >= 1 else 1)
+        row.add_suffix(scale)
+        return row, scale
+
+    @staticmethod
+    def command_row(title: str, subtitle: str, icon: str, command: list[str]) -> Adw.ActionRow:
+        row = Adw.ActionRow(title=title, subtitle=subtitle)
+        row.add_prefix(Gtk.Image.new_from_icon_name(icon))
+        row.set_activatable(True)
+        row.connect("activated", lambda _row: detached(command))
+        return row
+
+    def setting_value(self, key: str, value: object, option: str, convert: Callable[[object], object] | None = None) -> None:
+        self.settings[key] = value
+        self.persist_settings()
+        applied = convert(value) if convert else value
+        if not hypr_keyword(option, applied):
+            self.toast(f"Could not apply {key.replace('_', ' ')}")
+
+    def delayed_setting(self, key: str, value: object, option: str, convert: Callable[[object], object] | None = None) -> None:
+        self.settings[key] = value
+        self.persist_settings()
+        if source := self.setting_timeouts.pop(key, 0):
+            GLib.source_remove(source)
+
+        def apply_value() -> bool:
+            self.setting_timeouts.pop(key, None)
+            applied = convert(value) if convert else value
+            if not hypr_keyword(option, applied):
+                self.toast(f"Could not apply {key.replace('_', ' ')}")
+            return GLib.SOURCE_REMOVE
+
+        self.setting_timeouts[key] = GLib.timeout_add(140, apply_value)
+
+    @staticmethod
+    def current_brightness() -> int:
+        raw = output(["brightnessctl", "-m"], "")
+        try:
+            return int(raw.split(",")[3].rstrip("%"))
+        except (ValueError, IndexError):
+            return 100
+
+    def set_brightness(self, value: int) -> None:
+        key = "brightness"
+        if source := self.setting_timeouts.pop(key, 0):
+            GLib.source_remove(source)
+        self.setting_timeouts[key] = GLib.timeout_add(
+            120,
+            lambda: (self.setting_timeouts.pop(key, None), run(["brightnessctl", "set", f"{value}%"]), GLib.SOURCE_REMOVE)[-1],
+        )
+
+    @staticmethod
+    def wp_volume(target: str) -> tuple[int, bool]:
+        raw = output(["wpctl", "get-volume", target], "Volume: 0")
+        try:
+            value = round(float(raw.split()[1]) * 100)
+        except (ValueError, IndexError):
+            value = 0
+        return value, "MUTED" in raw
+
+    def set_wp_volume(self, target: str, value: int) -> None:
+        key = f"volume-{target}"
+        if source := self.setting_timeouts.pop(key, 0):
+            GLib.source_remove(source)
+        self.setting_timeouts[key] = GLib.timeout_add(
+            100,
+            lambda: (self.setting_timeouts.pop(key, None), run(["wpctl", "set-volume", "-l", "1.25", target, f"{value / 100:.2f}"]), GLib.SOURCE_REMOVE)[-1],
+        )
+
+    def cursor_size_changed(self, value: int) -> None:
+        self.settings["cursor_size"] = value
+        self.persist_settings()
+        key = "cursor_size"
+        if source := self.setting_timeouts.pop(key, 0):
+            GLib.source_remove(source)
+
+        def apply_cursor() -> bool:
+            self.setting_timeouts.pop(key, None)
+            theme = os.environ.get("XCURSOR_THEME") or "breeze_cursors"
+            run(["hyprctl", "setcursor", theme, str(value)])
+            return GLib.SOURCE_REMOVE
+
+        self.setting_timeouts[key] = GLib.timeout_add(150, apply_cursor)
+
+    def preview_monitor(self, _button) -> None:
+        if not self.monitor:
+            self.toast("No active display found")
+            return
+        previous = {
+            "output": self.monitor["name"],
+            "mode": f"{self.monitor['width']}x{self.monitor['height']}@{self.monitor['refreshRate']:.2f}",
+            "position": f"{self.monitor['x']}x{self.monitor['y']}",
+            "scale": float(self.monitor.get("scale", 1)),
+            "transform": int(self.monitor.get("transform", 0)),
+        }
+        mode = self.monitor_modes[self.mode_dropdown.get_selected()].replace("Hz", "") if self.monitor_modes else "preferred"
+        proposed = {
+            "output": self.monitor["name"],
+            "mode": mode,
+            "position": previous["position"],
+            "scale": float(self.monitor_scales[self.monitor_scale_dropdown.get_selected()]),
+            "transform": self.monitor_transforms[self.orientation_dropdown.get_selected()],
+        }
+        if not apply_monitor(proposed):
+            self.toast("The display configuration was rejected")
+            return
+        self.monitor_previous = previous
+        self.monitor_proposed = proposed
+        self.monitor_timeout = GLib.timeout_add_seconds(12, self.rollback_monitor)
+        dialog = Adw.AlertDialog(
+            heading="Keep this display configuration?",
+            body="OrbitOS will automatically restore the previous display after 12 seconds if you cannot confirm.",
+        )
+        dialog.add_response("revert", "Revert")
+        dialog.add_response("keep", "Keep")
+        dialog.set_response_appearance("keep", Adw.ResponseAppearance.SUGGESTED)
+        dialog.set_default_response("keep")
+        dialog.set_close_response("revert")
+        dialog.connect("response", self.monitor_response)
+        self.monitor_dialog = dialog
+        dialog.present(self)
+
+    def rollback_monitor(self) -> bool:
+        if getattr(self, "monitor_previous", None):
+            apply_monitor(self.monitor_previous)
+            self.monitor_previous = None
+            self.toast("Previous display configuration restored")
+        self.monitor_timeout = 0
+        dialog = getattr(self, "monitor_dialog", None)
+        if dialog:
+            self.monitor_dialog = None
+            dialog.force_close()
+        return GLib.SOURCE_REMOVE
+
+    def monitor_response(self, _dialog, response: str) -> None:
+        if timeout := getattr(self, "monitor_timeout", 0):
+            GLib.source_remove(timeout)
+            self.monitor_timeout = 0
+        self.monitor_dialog = None
+        if response == "keep":
+            self.settings["monitor"] = self.monitor_proposed
+            self.persist_settings()
+            self.monitor_previous = None
+            self.toast("Display configuration saved")
+        else:
+            self.rollback_monitor()
+
+    def reload_orbitos(self) -> None:
+        result = run(["hyprctl", "reload", "config-only"], timeout=10)
+        run(["quickshell", "kill"], timeout=5)
+        detached(["quickshell", "--daemonize"])
+        if result and result.returncode == 0:
+            self.toast("OrbitOS reloaded")
+        else:
+            self.toast("Hyprland reload reported an error")
+
+    def confirm_reset_settings(self, *_args) -> None:
+        dialog = Adw.AlertDialog(
+            heading="Reset OrbitOS settings?",
+            body="App-managed overrides will be removed and the dotfile configuration will be reloaded. Your files and application data are not affected.",
+        )
+        dialog.add_response("cancel", "Cancel")
+        dialog.add_response("reset", "Reset")
+        dialog.set_response_appearance("reset", Adw.ResponseAppearance.DESTRUCTIVE)
+        dialog.set_default_response("cancel")
+        dialog.set_close_response("cancel")
+        dialog.connect("response", self.reset_settings_response)
+        dialog.present(self)
+
+    def reset_settings_response(self, _dialog, response: str) -> None:
+        if response != "reset":
+            return
+        try:
+            SETTINGS_FILE.unlink(missing_ok=True)
+        except OSError:
+            self.toast("Could not remove the settings override")
+            return
+        run(["hyprctl", "reload", "config-only"], timeout=10)
+        speed_script = QS_SCRIPTS / "animation-speed.py"
+        if speed_script.exists():
+            run([str(speed_script), "set", "100"], timeout=8)
+        self.toast("Settings reset; reopen Settings to refresh every control")
+
     def persist_settings(self) -> None:
         save_json(SETTINGS_FILE, self.settings)
 
     def setting_bool(self, key: str, value: bool, keyword: str) -> None:
         self.settings[key] = value
         self.persist_settings()
-        hypr_keyword(keyword, "true" if value else "false")
-        self.toast(f"{key.replace('_', ' ').title()} {'enabled' if value else 'disabled'}")
+        if hypr_keyword(keyword, value):
+            self.toast(f"{key.replace('_', ' ').title()} {'enabled' if value else 'disabled'}")
+        else:
+            self.toast(f"Could not apply {key.replace('_', ' ')}")
 
     def geometry_changed(self, key: str, value: int) -> None:
         self.settings[key] = value

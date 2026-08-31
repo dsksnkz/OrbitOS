@@ -56,10 +56,21 @@ def current() -> int:
 def apply(percent: int) -> None:
     factor = percent / 100
     for leaf, base, curve, style in ANIMATIONS:
-        value = f"{leaf},1,{base * factor:.2f},{curve}"
+        # Hyprland's Lua parser rejects legacy `hyprctl keyword animation`.
+        # A larger percentage means perceptually faster motion, so animation
+        # duration is divided by the requested factor.
+        speed = base / factor
+        curve_field = "spring" if curve == "orbit_spring" else "bezier"
+        fields = [
+            f'leaf = "{leaf}"',
+            "enabled = true",
+            f"speed = {speed:.2f}",
+            f'{curve_field} = "{curve}"',
+        ]
         if style:
-            value += f",{style}"
-        subprocess.run(["hyprctl", "keyword", "animation", value], check=False,
+            fields.append(f'style = "{style}"')
+        code = "hl.animation({ " + ", ".join(fields) + " })"
+        subprocess.run(["hyprctl", "eval", code], check=False,
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 

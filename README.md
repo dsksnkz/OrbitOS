@@ -14,8 +14,8 @@ Includes a Quickshell bar and home screen, control and time hubs, alarms,
 an installed-app manager, styled Rofi and wlogout, plus native OrbitOS apps.
 
 The ecosystem includes Orbit Launcher, a live-telemetry Game Accelerator with
-reversible Boost sessions, and a unified Settings app for motion, layout,
-desktop surfaces, power, and system tools.
+reversible Boost sessions, and a unified Settings app for displays, input,
+sound, motion, windows, connectivity, power, and system tools.
 
 Click the Arch icon to go home. Click the clock for calendar, alarms, and timers.
 Use `Super+Esc` for Home, `Super+I` for Settings, `Super+O` for Orbit Launcher,
