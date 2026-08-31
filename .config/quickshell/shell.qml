@@ -487,7 +487,7 @@ ShellRoot {
                 anchor.rect.x: bar.width - width
                 anchor.rect.y: bar.height + 6
                 implicitWidth: 382
-                implicitHeight: 578
+                implicitHeight: 650
                 visible: shell.controlOpen
                 color: "transparent"
 
@@ -626,9 +626,23 @@ ShellRoot {
                             }
                             UtilityTile {
                                 icon: "󰆍"
-                                title: "OrbitOS Tools"
-                                subtitle: "15 desktop utilities"
-                                command: "~/.config/quickshell/scripts/utility-menu.sh"
+                                title: "Orbit Launcher"
+                                subtitle: "OrbitOS apps and surfaces"
+                                command: "~/.local/bin/orbitos-launcher"
+                                onActivated: shell.controlOpen = false
+                            }
+                            UtilityTile {
+                                icon: "󰊴"
+                                title: "Game Accelerator"
+                                subtitle: "Telemetry and reversible boost"
+                                command: "~/.local/bin/orbitos-game"
+                                onActivated: shell.controlOpen = false
+                            }
+                            UtilityTile {
+                                icon: "󰒓"
+                                title: "Settings"
+                                subtitle: "Experience, layout and system"
+                                command: "~/.local/bin/orbitos-settings"
                                 onActivated: shell.controlOpen = false
                             }
                         }

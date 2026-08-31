@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=OrbitOS Settings
+Comment=Configure the OrbitOS desktop experience
+Exec=orbitos-settings
+Icon=preferences-system-symbolic
+Terminal=false
+Type=Application
+Categories=Settings;
+Keywords=OrbitOS;settings;appearance;animations;performance;

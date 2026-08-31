@@ -84,8 +84,15 @@ MANAGED_PATHS=(
     ".config/wlogout"
     ".local/bin/orbitos-tools"
     ".local/bin/orbitos-apps"
+    ".local/bin/orbitos-launcher"
+    ".local/bin/orbitos-game"
+    ".local/bin/orbitos-settings"
+    ".local/lib/orbitos"
     ".local/share/applications/io.github.dsksnkz.OrbitOS.desktop"
     ".local/share/applications/io.github.dsksnkz.OrbitApps.desktop"
+    ".local/share/applications/io.github.dsksnkz.OrbitOS.Launcher.desktop"
+    ".local/share/applications/io.github.dsksnkz.OrbitOS.GameAccelerator.desktop"
+    ".local/share/applications/io.github.dsksnkz.OrbitOS.Settings.desktop"
 )
 
 backup_existing() {
@@ -141,6 +148,9 @@ rewrite_home_paths() {
         "$HOME/.config/qt6ct/qt6ct.conf"
         "$HOME/.local/share/applications/io.github.dsksnkz.OrbitOS.desktop"
         "$HOME/.local/share/applications/io.github.dsksnkz.OrbitApps.desktop"
+        "$HOME/.local/share/applications/io.github.dsksnkz.OrbitOS.Launcher.desktop"
+        "$HOME/.local/share/applications/io.github.dsksnkz.OrbitOS.GameAccelerator.desktop"
+        "$HOME/.local/share/applications/io.github.dsksnkz.OrbitOS.Settings.desktop"
     )
     for file in "${files[@]}"; do
         [[ -f "$file" ]] && sed -i "s|/home/matte|$escaped_home|g" "$file"

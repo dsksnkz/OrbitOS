@@ -178,7 +178,7 @@ PopupWindow {
 
             Repeater {
                 model: [
-                    { icon: "󰀻", label: "Applications", command: ["rofi", "-show", "drun"] },
+                    { icon: "󰀻", label: "Orbit", command: ["orbitos-launcher"] },
                     { icon: "󰉋", label: "Files", command: ["nautilus"] },
                     { icon: "󰆍", label: "Terminal", command: ["kitty"] },
                     { icon: "󰒓", label: "Control", command: [] },

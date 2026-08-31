@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${1:-}" == "--apply" ]]; then
+    exec python3 "$HOME/.local/lib/orbitos/orbitos-suite.py" --apply
+fi
+exec python3 "$HOME/.local/lib/orbitos/orbitos-suite.py" settings

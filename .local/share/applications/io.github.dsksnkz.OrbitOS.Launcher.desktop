@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Orbit Launcher
+Comment=Launch OrbitOS apps and desktop surfaces
+Exec=orbitos-launcher
+Icon=view-app-grid-symbolic
+Terminal=false
+Type=Application
+Categories=Utility;
+Keywords=OrbitOS;launcher;home;control;

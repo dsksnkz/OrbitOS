@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=OrbitOS Game Accelerator
+Comment=Hardware telemetry and reversible gaming performance controls
+Exec=orbitos-game
+Icon=applications-games-symbolic
+Terminal=false
+Type=Application
+Categories=Game;
+Keywords=game;performance;fan;gpu;cpu;boost;gamemode;
