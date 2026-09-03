@@ -23,14 +23,20 @@ and `Super+G` for Game Accelerator.
 
 ## Install
 
+On Arch Linux, run:
+
 ```bash
-git clone https://github.com/dsksnkz/OrbitOS.git
-cd OrbitOS
-chmod +x install.sh
-./install.sh
+git clone https://github.com/dsksnkz/OrbitOS.git && cd OrbitOS && ./install.sh
 ```
 
-The installer offers to back up your existing dotfiles and asks separately
-before applying the included monitor layout.
+The installer can install the Arch packages and AUR integrations used by
+OrbitOS, create a timestamped backup, deploy the dotfiles, enable networking
+and Bluetooth, and adapt user-specific paths. Your monitor layout is preserved
+unless you explicitly choose the included layout.
+
+Use `./install.sh --yes` to accept the recommended installer choices. Run
+`./install.sh --dry-run` to preview the actions or `./install.sh --no-packages`
+to deploy only the dotfiles. Backups are stored in
+`~/.local/state/orbitos/backups/`.
 
 Made for Arch Linux, Hyprland, and Wayland. Review the files before installing.

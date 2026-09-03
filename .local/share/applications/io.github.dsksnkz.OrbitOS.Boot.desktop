@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=OrbitOS Boot Animation
+Comment=Replay the seven-second OrbitOS startup sequence
+Exec=/home/matte/.local/bin/orbitos-boot
+Icon=system-run-symbolic
+Terminal=false
+Type=Application
+Categories=Utility;System;
+Keywords=OrbitOS;boot;startup;animation;intro;
+StartupNotify=false

@@ -16,6 +16,7 @@ ShellRoot {
     property bool controlOpen: false
     property bool timeOpen: false
     property bool homeOpen: false
+    property bool brightnessOpen: false
 
     Variants {
         id: bars
@@ -45,6 +46,7 @@ ShellRoot {
                 if (shell.controlOpen) {
                     shell.timeOpen = false
                     shell.homeOpen = false
+                    shell.brightnessOpen = false
                 }
             }
 
@@ -152,6 +154,7 @@ ShellRoot {
                             if (shell.homeOpen) {
                                 shell.timeOpen = false
                                 shell.controlOpen = false
+                                shell.brightnessOpen = false
                             }
                         }
                     }
@@ -299,6 +302,7 @@ ShellRoot {
                                 if (shell.timeOpen) {
                                     shell.controlOpen = false
                                     shell.homeOpen = false
+                                    shell.brightnessOpen = false
                                 }
                             }
                         }
@@ -440,10 +444,23 @@ ShellRoot {
                         rail: true
                         visible: bar.brightness > 0
                         label: "󰃠 " + bar.brightness + "%"
-                        onClicked: Quickshell.execDetached(["sh", "-lc", "brightnessctl set 50%"])
-                        onWheel: delta => Quickshell.execDetached([
-                            "brightnessctl", "-e4", "-n2", "set", delta > 0 ? "3%+" : "3%-"
-                        ])
+                        active: shell.brightnessOpen
+                        hint: "Display brightness"
+                        onClicked: {
+                            shell.brightnessOpen = !shell.brightnessOpen
+                            if (shell.brightnessOpen) {
+                                shell.controlOpen = false
+                                shell.timeOpen = false
+                                shell.homeOpen = false
+                            }
+                        }
+                        onWheel: delta => {
+                            const step = delta > 0 ? 3 : -3
+                            bar.brightness = Math.max(5, Math.min(100, bar.brightness + step))
+                            Quickshell.execDetached([
+                                Quickshell.shellPath("scripts/brightness.py"), "change", step.toString()
+                            ])
+                        }
                     }
 
                     BarButton {
@@ -475,6 +492,7 @@ ShellRoot {
                             if (shell.controlOpen) {
                                 shell.timeOpen = false
                                 shell.homeOpen = false
+                                shell.brightnessOpen = false
                             }
                         }
                     }
@@ -787,6 +805,19 @@ ShellRoot {
                 opened: shell.timeOpen
                 onCloseRequested: shell.timeOpen = false
             }
+
+            BrightnessHub {
+                anchorWindow: bar
+                opened: shell.brightnessOpen
+                brightness: bar.brightness
+                onCloseRequested: shell.brightnessOpen = false
+                onBrightnessRequested: target => {
+                    bar.brightness = target
+                    Quickshell.execDetached([
+                        Quickshell.shellPath("scripts/brightness.py"), "set", target.toString()
+                    ])
+                }
+            }
         }
     }
 
@@ -798,6 +829,7 @@ ShellRoot {
             if (shell.controlOpen) {
                 shell.timeOpen = false
                 shell.homeOpen = false
+                shell.brightnessOpen = false
             }
         }
 
@@ -810,6 +842,7 @@ ShellRoot {
             if (shell.timeOpen) {
                 shell.controlOpen = false
                 shell.homeOpen = false
+                shell.brightnessOpen = false
             }
         }
 
@@ -826,6 +859,7 @@ ShellRoot {
             if (shell.homeOpen) {
                 shell.controlOpen = false
                 shell.timeOpen = false
+                shell.brightnessOpen = false
             }
         }
     }

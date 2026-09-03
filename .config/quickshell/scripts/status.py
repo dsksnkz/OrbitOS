@@ -43,6 +43,21 @@ def temperature() -> int | None:
 
 
 def brightness_percent() -> int | None:
+    controller = Path(__file__).with_name("brightness.py")
+    try:
+        result = subprocess.run(
+            [str(controller), "get"],
+            capture_output=True,
+            text=True,
+            timeout=4,
+            check=False,
+            env={**os.environ, "LC_ALL": "C"},
+        )
+        if result.returncode == 0:
+            return int(result.stdout.strip())
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        pass
+
     roots = sorted(Path("/sys/class/backlight").glob("*"))
     if not roots:
         return None

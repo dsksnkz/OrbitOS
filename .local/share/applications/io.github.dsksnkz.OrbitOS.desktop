@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=OrbitOS Tools
 Comment=Open the OrbitOS desktop control dashboard
-Exec=/home/matte/.local/bin/orbitos-tools
+Exec=orbitos-tools
 Icon=preferences-system-symbolic
 Terminal=false
 Type=Application

@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=Orbit Apps
 Comment=View and uninstall installed applications
-Exec=/home/matte/.local/bin/orbitos-apps
+Exec=orbitos-apps
 Icon=system-software-install-symbolic
 Terminal=false
 Type=Application

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+BOOT_QML="${XDG_CONFIG_HOME:-${HOME}/.config}/quickshell/orbitos-boot/boot.qml"
+
+if [[ ! -f "${BOOT_QML}" ]]; then
+    printf 'OrbitOS boot animation is missing: %s\n' "${BOOT_QML}" >&2
+    exit 1
+fi
+
+exec qs --no-duplicate --path "${BOOT_QML}"

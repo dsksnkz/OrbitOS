@@ -40,7 +40,7 @@ DEFAULTS: dict[str, object] = {
     "gaps_in": 4,
     "gaps_out": 6,
     "animation_speed": 100,
-    "direct_scanout": True,
+    "direct_scanout": False,
     "border_size": 1,
     "shadow": True,
     "motion_blur": True,
@@ -157,7 +157,7 @@ def live_settings() -> dict[str, object]:
         "gaps_in": int(hypr_option("general:gaps_in", 3)),
         "gaps_out": int(hypr_option("general:gaps_out", 6)),
         "animation_speed": speed,
-        "direct_scanout": bool(hypr_option("render:direct_scanout", 1)),
+        "direct_scanout": bool(hypr_option("render:direct_scanout", 0)),
         "border_size": int(hypr_option("general:border_size", 1)),
         "shadow": bool(hypr_option("decoration:shadow:enabled", True)),
         "motion_blur": bool(hypr_option("decoration:motion_blur:enabled", True)),
@@ -228,6 +228,8 @@ def apply_saved_settings() -> int:
             apply_monitor(monitor)
     if "cursor_size" in settings:
         run(["hyprctl", "setcursor", os.environ.get("XCURSOR_THEME") or "breeze_cursors", str(int(settings["cursor_size"]))])
+    if isinstance(settings.get("audio_output"), str):
+        switch_audio_output(str(settings["audio_output"]))
     return 0
 
 
@@ -277,6 +279,65 @@ def set_caffeine(enabled: bool) -> None:
 def set_power_profile(profile: str) -> None:
     if shutil.which("powerprofilesctl"):
         run(["powerprofilesctl", "set", profile], timeout=12)
+
+
+def audio_outputs() -> list[dict[str, object]]:
+    """Return usable PipeWire sinks with concise, human-facing OrbitOS labels."""
+    try:
+        sinks = json.loads(output(["pactl", "-f", "json", "list", "sinks"], "[]"))
+    except ValueError:
+        return []
+    current = output(["pactl", "get-default-sink"], "")
+    devices: list[dict[str, object]] = []
+    for sink in sinks if isinstance(sinks, list) else []:
+        name = str(sink.get("name", ""))
+        if not name:
+            continue
+        ports = sink.get("ports") or []
+        if ports and all(port.get("availability") == "not available" for port in ports):
+            continue
+        properties = sink.get("properties") or {}
+        description = str(sink.get("description") or properties.get("device.description") or name)
+        lowered = f"{name} {description}".lower()
+        if name.startswith("bluez_output."):
+            device_name = str(properties.get("device.description") or description)
+            label = f"{device_name} · Bluetooth"
+            icon = "bluetooth-active-symbolic"
+        elif "pci-0000_01_00.1" in name or ("ga107" in lowered and "hdmi" in lowered):
+            label = "IEMs · HDMI"
+            icon = "audio-headphones-symbolic"
+        elif "speaker" in lowered:
+            label = "Laptop speakers"
+            icon = "audio-speakers-symbolic"
+        else:
+            label = description
+            icon = "audio-card-symbolic"
+        volume = sink.get("volume") or {}
+        channel = next(iter(volume.values()), {}) if isinstance(volume, dict) else {}
+        devices.append({
+            "name": name,
+            "label": label,
+            "icon": icon,
+            "volume": str(channel.get("value_percent", "—")),
+            "default": name == current,
+        })
+    return sorted(devices, key=lambda device: (not bool(device["default"]), str(device["label"]).casefold()))
+
+
+def switch_audio_output(sink_name: str) -> bool:
+    """Make a sink the system route and move existing playback to it."""
+    available = {str(device["name"]) for device in audio_outputs()}
+    if sink_name not in available:
+        return False
+    selected = run(["pactl", "set-default-sink", sink_name])
+    if not selected or selected.returncode != 0:
+        return False
+    run(["pactl", "set-sink-mute", sink_name, "0"])
+    for line in output(["pactl", "list", "sink-inputs", "short"], "").splitlines():
+        fields = line.split()
+        if fields:
+            run(["pactl", "move-sink-input", fields[0], sink_name])
+    return True
 
 
 def async_call(work: Callable[[], object], done: Callable[[object], None] | None = None) -> None:
@@ -605,7 +666,7 @@ class OrbitWindow(Adw.ApplicationWindow):
         grid.set_min_children_per_line(2)
         grid.set_column_spacing(12)
         grid.set_row_spacing(12)
-        actions = (
+        actions = [
             ("Game Accelerator", "Live telemetry and reversible game boost", "applications-games-symbolic", lambda: self.show_page("game")),
             ("Settings", "Shape motion, layout and desktop behavior", "preferences-system-symbolic", lambda: self.show_page("settings")),
             ("Orbit Apps", "View and uninstall installed applications", "system-software-install-symbolic", lambda: detached(["orbitos-apps"])),
@@ -615,7 +676,10 @@ class OrbitWindow(Adw.ApplicationWindow):
             ("System Monitor", "CPU, GPU, memory and process detail", "utilities-system-monitor-symbolic", lambda: detached(["missioncenter"])),
             ("Power", "Lock, log out, suspend or shut down", "system-shutdown-symbolic", lambda: detached(["wlogout"])),
             ("App Search", "Search every installed application", "system-search-symbolic", lambda: detached(["rofi", "-show", "drun"])),
-        )
+        ]
+        fun60 = Path.home() / ".local/bin/fun60-linux"
+        if fun60.exists():
+            actions.insert(7, ("FUN60 Control", "Rapid trigger, actuation, profiles and RGB", "input-keyboard-symbolic", lambda: detached([str(fun60)])))
         for title, detail, icon, callback in actions:
             button = Gtk.Button()
             button.add_css_class("launch-card")
@@ -937,7 +1001,7 @@ class OrbitWindow(Adw.ApplicationWindow):
         vrr.set_active(bool(self.settings["vrr"]))
         vrr.connect("notify::active", lambda row, _param: self.setting_value("vrr", row.get_active(), "misc:vrr", lambda value: 1 if value else 0))
         displays.add(vrr)
-        if shutil.which("brightnessctl"):
+        if shutil.which("ddcutil") or shutil.which("brightnessctl"):
             brightness = self.current_brightness()
             bright_row, bright_scale = self.scale_row("Brightness", "Hardware backlight level", 5, 100, 1, brightness)
             bright_scale.connect("value-changed", lambda scale: self.set_brightness(round(scale.get_value())))
@@ -1021,14 +1085,33 @@ class OrbitWindow(Adw.ApplicationWindow):
         content.append(keyboard)
 
         sound = Adw.PreferencesGroup(title="Sound", description="PipeWire output and microphone controls")
+        self.audio_devices = audio_outputs()
+        route_row = Adw.ActionRow(
+            title="Audio output",
+            subtitle="Switch the media keys, top bar and every playing app together",
+        )
+        route_row.add_prefix(Gtk.Image.new_from_icon_name("audio-headphones-symbolic"))
+        self.audio_route_row = route_row
+        if self.audio_devices:
+            self.audio_dropdown = Gtk.DropDown.new_from_strings([str(device["label"]) for device in self.audio_devices])
+            current_output = next((index for index, device in enumerate(self.audio_devices) if device["default"]), 0)
+            self.audio_dropdown.set_selected(current_output)
+            self.audio_dropdown.set_valign(Gtk.Align.CENTER)
+            self.audio_dropdown.connect("notify::selected", self.audio_output_changed)
+            route_row.add_suffix(self.audio_dropdown)
+        else:
+            unavailable = Gtk.Label(label="No outputs found")
+            unavailable.add_css_class("dim-label")
+            route_row.add_suffix(unavailable)
+        sound.add(route_row)
         sink_volume, sink_muted = self.wp_volume("@DEFAULT_AUDIO_SINK@")
-        output_row, output_scale = self.scale_row("Output volume", "Speakers and headphones", 0, 125, 1, sink_volume)
-        output_scale.connect("value-changed", lambda scale: self.set_wp_volume("@DEFAULT_AUDIO_SINK@", round(scale.get_value())))
+        output_row, self.output_scale = self.scale_row("Output volume", "Controls the selected output", 0, 125, 1, sink_volume)
+        self.output_scale.connect("value-changed", lambda scale: self.set_wp_volume("@DEFAULT_AUDIO_SINK@", round(scale.get_value())))
         sound.add(output_row)
-        output_mute = Adw.SwitchRow(title="Mute output", subtitle="Silence all playback")
-        output_mute.set_active(sink_muted)
-        output_mute.connect("notify::active", lambda row, _param: run(["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "1" if row.get_active() else "0"]))
-        sound.add(output_mute)
+        self.output_mute = Adw.SwitchRow(title="Mute output", subtitle="Silence all playback")
+        self.output_mute.set_active(sink_muted)
+        self.output_mute.connect("notify::active", lambda row, _param: run(["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "1" if row.get_active() else "0"]))
+        sound.add(self.output_mute)
         mic_volume, mic_muted = self.wp_volume("@DEFAULT_AUDIO_SOURCE@")
         mic_row, mic_scale = self.scale_row("Microphone level", "Default recording input", 0, 125, 1, mic_volume)
         mic_scale.connect("value-changed", lambda scale: self.set_wp_volume("@DEFAULT_AUDIO_SOURCE@", round(scale.get_value())))
@@ -1078,7 +1161,10 @@ class OrbitWindow(Adw.ApplicationWindow):
         dropdown.connect("notify::selected", lambda widget, _param: self.profile_changed(profiles[widget.get_selected()]))
         profile.add_suffix(dropdown)
         performance.add(profile)
-        direct = Adw.SwitchRow(title="Direct scanout", subtitle="Reduce compositor overhead for suitable fullscreen games")
+        direct = Adw.SwitchRow(
+            title="Direct scanout (experimental)",
+            subtitle="Lowest overhead, but may cause fullscreen artifacts on hybrid NVIDIA systems",
+        )
         direct.set_active(bool(self.settings["direct_scanout"]))
         direct.connect("notify::active", lambda row, _param: self.setting_bool("direct_scanout", row.get_active(), "render:direct_scanout"))
         performance.add(direct)
@@ -1183,10 +1269,11 @@ class OrbitWindow(Adw.ApplicationWindow):
 
     @staticmethod
     def current_brightness() -> int:
-        raw = output(["brightnessctl", "-m"], "")
+        controller = Path.home() / ".config/quickshell/scripts/brightness.py"
+        raw = output([str(controller), "get"], "100")
         try:
-            return int(raw.split(",")[3].rstrip("%"))
-        except (ValueError, IndexError):
+            return int(raw.strip())
+        except ValueError:
             return 100
 
     def set_brightness(self, value: int) -> None:
@@ -1195,7 +1282,11 @@ class OrbitWindow(Adw.ApplicationWindow):
             GLib.source_remove(source)
         self.setting_timeouts[key] = GLib.timeout_add(
             120,
-            lambda: (self.setting_timeouts.pop(key, None), run(["brightnessctl", "set", f"{value}%"]), GLib.SOURCE_REMOVE)[-1],
+            lambda: (
+                self.setting_timeouts.pop(key, None),
+                run([str(Path.home() / ".config/quickshell/scripts/brightness.py"), "set", str(value)]),
+                GLib.SOURCE_REMOVE,
+            )[-1],
         )
 
     @staticmethod
@@ -1215,6 +1306,37 @@ class OrbitWindow(Adw.ApplicationWindow):
             100,
             lambda: (self.setting_timeouts.pop(key, None), run(["wpctl", "set-volume", "-l", "1.25", target, f"{value / 100:.2f}"]), GLib.SOURCE_REMOVE)[-1],
         )
+
+    def audio_output_changed(self, dropdown: Gtk.DropDown, _param) -> None:
+        index = dropdown.get_selected()
+        if index >= len(self.audio_devices):
+            return
+        device = self.audio_devices[index]
+        if device["default"]:
+            return
+        self.audio_route_row.set_subtitle(f"Switching to {device['label']}…")
+        dropdown.set_sensitive(False)
+        async_call(
+            lambda: switch_audio_output(str(device["name"])),
+            lambda success: self.audio_output_finished(device, bool(success)),
+        )
+
+    def audio_output_finished(self, device: dict[str, object], success: bool) -> bool:
+        self.audio_dropdown.set_sensitive(True)
+        if not success:
+            self.audio_route_row.set_subtitle("The output disconnected before OrbitOS could switch")
+            self.toast("Could not switch audio output")
+            return GLib.SOURCE_REMOVE
+        for candidate in self.audio_devices:
+            candidate["default"] = candidate["name"] == device["name"]
+        self.settings["audio_output"] = device["name"]
+        self.persist_settings()
+        volume, muted = self.wp_volume("@DEFAULT_AUDIO_SINK@")
+        self.output_scale.set_value(volume)
+        self.output_mute.set_active(muted)
+        self.audio_route_row.set_subtitle(f"Active now · {device['volume']} before switch · all playback moved")
+        self.toast(f"Audio moved to {device['label']}")
+        return GLib.SOURCE_REMOVE
 
     def cursor_size_changed(self, value: int) -> None:
         self.settings["cursor_size"] = value

@@ -69,6 +69,7 @@ hl.window_rule({
 hl.bind("SUPER + V", hl.dsp.exec_cmd("kitty --class clipse -e 'clipse'"))
 
 hl.on("hyprland.start", function()
+    hl.exec_cmd("~/.local/bin/orbitos-boot")
     hl.exec_cmd("hyprpaper")
     hl.exec_cmd("quickshell --daemonize")
     hl.exec_cmd("~/.local/bin/orbitos-settings --apply")
@@ -159,11 +160,11 @@ hl.config({
     },
 })
 
--- Let a fullscreen game bypass the compositor when its presentation mode allows it.
--- This reduces compositor overhead and input latency for CS2.
+-- Keep fullscreen frames composited on the hybrid NVIDIA display path.
+-- Direct scanout can produce flashing corruption on this monitor/GPU combination.
 hl.config({
     render = {
-        direct_scanout = true,
+        direct_scanout = false,
     },
 })
 
@@ -224,6 +225,13 @@ hl.config({
     animations = {
         enabled = true,
         workspace_wraparound = true,
+    },
+})
+
+-- Keep rapid Super + wheel workspace navigation responsive.
+hl.config({
+    binds = {
+        scroll_event_delay = 60,
     },
 })
 
@@ -323,7 +331,7 @@ hl.animation({
     leaf = "workspaces",
     enabled = true,
     speed = 5.5,
-    spring = "orbit_spring",
+    bezier = "md3_decel",
     style = "slidefade 18%",
 })
 
@@ -349,8 +357,8 @@ hl.animation({ leaf = "fadeDpms", enabled = true, speed = 7.0, bezier = "linear"
 hl.animation({ leaf = "borderangle", enabled = true, speed = 12.0, bezier = "linear", style = "once" })
 hl.animation({ leaf = "shadowangle", enabled = true, speed = 14.0, bezier = "linear", style = "once" })
 hl.animation({ leaf = "glowangle", enabled = true, speed = 14.0, bezier = "linear", style = "once" })
-hl.animation({ leaf = "workspacesIn", enabled = true, speed = 5.5, spring = "orbit_spring", style = "slidefade 18%" })
-hl.animation({ leaf = "workspacesOut", enabled = true, speed = 4.5, bezier = "md3_accel", style = "slidefade 18%" })
+hl.animation({ leaf = "workspacesIn", enabled = true, speed = 5.5, bezier = "md3_decel", style = "slidefade 18%" })
+hl.animation({ leaf = "workspacesOut", enabled = true, speed = 4.5, bezier = "md3_decel", style = "slidefade 18%" })
 hl.animation({ leaf = "specialWorkspaceIn", enabled = true, speed = 5.0, bezier = "overshot", style = "slidefadevert 22%" })
 hl.animation({ leaf = "specialWorkspaceOut", enabled = true, speed = 4.0, bezier = "md3_accel", style = "slidefadevert 22%" })
 hl.animation({ leaf = "zoomFactor", enabled = true, speed = 4.0, spring = "orbit_spring" })
@@ -549,7 +557,7 @@ hl.bind(var_mainMod .. " + mouse:273", hl.dsp.window.resize(), {
     mouse = true,
 })
 
--- Laptop multimedia keys for volume and LCD brightness
+-- Multimedia keys for volume and the active monitor brightness
 hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"), {
     repeating = true,
     locked = true,
@@ -566,11 +574,11 @@ hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURC
     repeating = true,
     locked = true,
 })
-hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%+"), {
+hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("~/.config/quickshell/scripts/brightness.py change 5"), {
     repeating = true,
     locked = true,
 })
-hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%-"), {
+hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("~/.config/quickshell/scripts/brightness.py change -5"), {
     repeating = true,
     locked = true,
 })
